@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+mkdir -p "$script_dir/.gomodcache" "$script_dir/.gocache" "$script_dir/.gotmp"
+
+exec env \
+  GOMODCACHE="$script_dir/.gomodcache" \
+  GOCACHE="$script_dir/.gocache" \
+  GOTMPDIR="$script_dir/.gotmp" \
+  go run -ldflags=-linkmode=external "$script_dir/cmd/stockbridge" "$@"
