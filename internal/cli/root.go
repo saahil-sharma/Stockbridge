@@ -5,16 +5,19 @@ import "github.com/spf13/cobra"
 func NewRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stockbridge",
-		Short: "Stockbridge analyzes listed U.S. stocks from sourced public data.",
+		Short: "Stockbridge analyzes stocks from sourced public data.",
 		Long: `Stockbridge is a command-line stock research tool.
 
-It accepts a listed U.S. stock ticker, validates the listing through Nasdaq
-Trader symbol directories, fetches SEC company and XBRL company-facts data,
-and renders a sourced fundamental snapshot.
+It accepts a stock ticker, resolves the company through Nasdaq Trader symbol
+directories, SEC company tickers, and local foreign issuer fallbacks, fetches
+SEC company-facts data when available, and renders a sourced fundamental
+snapshot.
 
 Current scope:
   - Supports Nasdaq-listed and other exchange-listed symbols found in Nasdaq
     Trader symbol directory files.
+  - Uses SEC company tickers as a reporting-company fallback.
+  - Includes a local curated fallback for major ADRs and foreign issuers.
   - Uses SEC company tickers and company facts for fundamentals.
   - Renders styled terminal output by default with strong section hierarchy,
     scan-friendly financial values, and a multi-color information palette.

@@ -23,13 +23,14 @@ func aboutText() string {
 ===========
 
 Stockbridge is a CLI tool for producing a sourced fundamental snapshot for a
-listed U.S. stock ticker.
+stock ticker from the current Stockbridge symbol universe.
 
 What it does today:
-  1. Validates the ticker against Nasdaq Trader symbol directory files.
-  2. Detects the listing exchange and market.
-  3. Maps the ticker to an SEC CIK.
-  4. Fetches SEC XBRL company-facts data.
+  1. Resolves the ticker through Nasdaq Trader symbol directories, SEC company
+     tickers, and a local curated ADR/foreign issuer fallback.
+  2. Detects the listing exchange and market when available.
+  3. Maps the ticker to an SEC CIK when available.
+  4. Fetches SEC XBRL company-facts data when available.
   5. Renders a styled terminal report with fundamentals, notes, sources, and
      retrieval times.
 
@@ -81,8 +82,8 @@ Current limitations:
     but is currently sidelined from the command output.
   - SEC XBRL reporting tags differ across companies, so some metrics may be
     missing or less fresh than others.
-  - ETFs, funds, foreign issuers, and unusual securities may not produce a
-    useful fundamental report.
+  - Foreign issuers, ADRs, ETFs, funds, and unusual securities may resolve by
+    ticker but may not provide standardized SEC company-facts fundamentals.
   - Output is informational and is not personalized financial advice.
 `
 }

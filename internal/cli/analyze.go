@@ -24,12 +24,15 @@ func newAnalyzeCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "analyze <ticker>",
-		Short: "Fetch sourced fundamentals for a listed stock ticker.",
+		Short: "Fetch sourced fundamentals for a stock ticker.",
 		Long: `Fetch listing information and SEC company-facts fundamentals for a ticker.
 
-The command validates the ticker through Nasdaq Trader symbol directory files,
-detects the listing exchange, maps the ticker to an SEC CIK, fetches SEC XBRL
-company-facts data, and renders a sourced report.
+The command resolves the ticker through Nasdaq Trader symbol directory files,
+SEC company tickers, and a local curated foreign issuer fallback. It detects
+the listing exchange when available, maps the ticker to an SEC CIK when
+available, fetches SEC XBRL company-facts data when available, and renders a
+sourced report. If a ticker is recognized but standardized SEC fundamentals are
+missing, Stockbridge reports what is unavailable instead of fabricating data.
 
 Styled terminal output is the default. It uses color, spacing, bordered notes,
 uppercase section headers, and emphasized financial values to make the report

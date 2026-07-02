@@ -1,6 +1,9 @@
 package symbols
 
 import (
+	"context"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -85,4 +88,125 @@ func TestEquivalentTickersHandlesClassPunctuation(t *testing.T) {
 	if EquivalentTickers("AAPL", "MSFT") {
 		t.Fatal("EquivalentTickers matched unrelated tickers")
 	}
+}
+
+func TestLookupResolvesNasdaqNYSEAndSP500Tickers(t *testing.T) {
+	t.Parallel()
+
+	nasdaqBody := `Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+AAPL|Apple Inc. Common Stock|Q|N|N|100|N|N
+MSFT|Microsoft Corporation Common Stock|Q|N|N|100|N|N
+AMZN|Amazon.com, Inc. Common Stock|Q|N|N|100|N|N
+File Creation Time: 0701202612:01|||||||
+`
+	otherBody := `ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol
+JPM|JPMorgan Chase & Co. Common Stock|N|JPM|N|100|N|JPM
+XOM|Exxon Mobil Corporation Common Stock|N|XOM|N|100|N|XOM
+File Creation Time: 0701202612:03|||||||
+`
+	client, cleanup := testSymbolClient(t, nasdaqBody, otherBody)
+	defer cleanup()
+
+	tests := map[string]string{
+		"AAPL": "NASDAQ",
+		"MSFT": "NASDAQ",
+		"AMZN": "NASDAQ",
+		"JPM":  "New York Stock Exchange",
+		"XOM":  "New York Stock Exchange",
+	}
+	for ticker, wantExchange := range tests {
+		listing, err := client.Lookup(context.Background(), ticker)
+		if err != nil {
+			t.Fatalf("Lookup(%s) returned error: %v", ticker, err)
+		}
+		if listing.Symbol != ticker || listing.Exchange != wantExchange {
+			t.Fatalf("Lookup(%s) = %#v, want exchange %s", ticker, listing, wantExchange)
+		}
+	}
+}
+
+func TestLookupUsesCuratedFallbackWhenLiveDirectoriesMiss(t *testing.T) {
+	t.Parallel()
+
+	client, cleanup := testSymbolClient(t, emptyNasdaqDirectory(), emptyOtherDirectory())
+	defer cleanup()
+
+	for _, ticker := range []string{"TSM", "ASML", "BABA", "NVO"} {
+		listing, err := client.Lookup(context.Background(), ticker)
+		if err != nil {
+			t.Fatalf("Lookup(%s) returned error: %v", ticker, err)
+		}
+		if listing.Symbol != ticker || listing.SecurityName == "" {
+			t.Fatalf("Lookup(%s) returned incomplete listing: %#v", ticker, listing)
+		}
+	}
+}
+
+func TestLookupUnknownTickerReturnsUniverseError(t *testing.T) {
+	t.Parallel()
+
+	client, cleanup := testSymbolClient(t, emptyNasdaqDirectory(), emptyOtherDirectory())
+	defer cleanup()
+
+	_, err := client.Lookup(context.Background(), "ZZZZ")
+	if err == nil {
+		t.Fatal("Lookup accepted unknown ticker")
+	}
+	if !strings.Contains(err.Error(), "Ticker not found in the current Stockbridge symbol universe") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestTickerVariantsAvoidDuplicates(t *testing.T) {
+	t.Parallel()
+
+	variants := TickerVariants("AAPL")
+	if len(variants) != 1 || variants[0] != "AAPL" {
+		t.Fatalf("TickerVariants(AAPL) = %#v, want only AAPL", variants)
+	}
+	variants = TickerVariants("BRK.B")
+	if len(variants) != 2 || variants[0] != "BRK.B" || variants[1] != "BRK-B" {
+		t.Fatalf("TickerVariants(BRK.B) = %#v", variants)
+	}
+}
+
+func testSymbolClient(t *testing.T, nasdaqBody, otherBody string) (*Client, func()) {
+	t.Helper()
+	httpClient := &http.Client{Transport: symbolRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case "https://test.stockbridge/nasdaqlisted.txt":
+			return symbolTextResponse(http.StatusOK, nasdaqBody), nil
+		case "https://test.stockbridge/otherlisted.txt":
+			return symbolTextResponse(http.StatusOK, otherBody), nil
+		default:
+			return symbolTextResponse(http.StatusNotFound, ""), nil
+		}
+	})}
+	client := NewClient(httpClient)
+	client.nasdaqListedURL = "https://test.stockbridge/nasdaqlisted.txt"
+	client.otherListedURL = "https://test.stockbridge/otherlisted.txt"
+	return client, func() {}
+}
+
+type symbolRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn symbolRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func symbolTextResponse(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Status:     http.StatusText(status),
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+func emptyNasdaqDirectory() string {
+	return "Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares\nFile Creation Time: 0701202612:01|||||||\n"
+}
+
+func emptyOtherDirectory() string {
+	return "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol\nFile Creation Time: 0701202612:03|||||||\n"
 }

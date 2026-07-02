@@ -24,3 +24,14 @@ func TestParseCompanies(t *testing.T) {
 		t.Fatalf("unexpected company: %#v", companies[0])
 	}
 }
+
+func TestEquivalentTickersHandlesClassPunctuation(t *testing.T) {
+	t.Parallel()
+
+	if !equivalentTickers("BRK-B", "BRK.B") {
+		t.Fatal("BRK-B and BRK.B were not treated as equivalent")
+	}
+	if equivalentTickers("AAPL", "MSFT") {
+		t.Fatal("unrelated tickers were treated as equivalent")
+	}
+}
