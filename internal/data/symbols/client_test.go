@@ -53,3 +53,36 @@ File Creation Time: 0701202612:01|||||||
 		t.Fatalf("fileCreatedAt = %q", fileCreatedAt)
 	}
 }
+
+func TestCuratedFallbackListingResolvesMajorForeignIssuers(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{"TSM", "ASML", "BABA", "NVO", "TCEHY", "SHEL", "RIO"}
+	for _, ticker := range tests {
+		ticker := ticker
+		t.Run(ticker, func(t *testing.T) {
+			t.Parallel()
+			listing, found := CuratedFallbackListing(ticker)
+			if !found {
+				t.Fatalf("CuratedFallbackListing(%q) was not found", ticker)
+			}
+			if listing.Symbol != ticker || listing.SecurityName == "" || listing.Exchange == "" {
+				t.Fatalf("unexpected listing for %s: %#v", ticker, listing)
+			}
+		})
+	}
+}
+
+func TestEquivalentTickersHandlesClassPunctuation(t *testing.T) {
+	t.Parallel()
+
+	if !EquivalentTickers("BRK.B", "BRK-B") {
+		t.Fatal("EquivalentTickers did not match BRK.B and BRK-B")
+	}
+	if !EquivalentTickers("BF-B", "BF.B") {
+		t.Fatal("EquivalentTickers did not match BF-B and BF.B")
+	}
+	if EquivalentTickers("AAPL", "MSFT") {
+		t.Fatal("EquivalentTickers matched unrelated tickers")
+	}
+}
