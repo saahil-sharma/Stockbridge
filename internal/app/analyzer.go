@@ -4,24 +4,31 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"time"
 
 	"stockbridge/internal/analysis"
+	"stockbridge/internal/data/fundamentals"
 	"stockbridge/internal/data/market"
 	"stockbridge/internal/data/sec"
 	"stockbridge/internal/data/symbols"
 )
 
+const marketSummaryTimeout = 8 * time.Second
+
 type Analyzer struct {
-	symbolClient *symbols.Client
-	secClient    *sec.Client
-	marketClient *market.Client
+	symbolClient       *symbols.Client
+	secClient          *sec.Client
+	marketClient       *market.Client
+	fundamentalsClient *fundamentals.Client
 }
 
 func NewAnalyzer(httpClient *http.Client) *Analyzer {
 	return &Analyzer{
-		symbolClient: symbols.NewClient(httpClient),
-		secClient:    sec.NewClient(httpClient),
-		marketClient: market.NewClient(httpClient),
+		symbolClient:       symbols.NewClient(httpClient),
+		secClient:          sec.NewClient(httpClient),
+		marketClient:       market.NewClient(httpClient),
+		fundamentalsClient: fundamentals.NewClient(httpClient, os.Getenv("STOCKBRIDGE_FMP_API_KEY")),
 	}
 }
 
@@ -48,11 +55,17 @@ func (a *Analyzer) Analyze(ctx context.Context, rawTicker string) (analysis.Summ
 
 		facts, factsErr := a.secClient.CompanyFacts(ctx, company.CIK)
 		if factsErr != nil {
+			if summary, ok := a.buildMarketSummary(ctx, listing, ticker); ok {
+				return summary, nil
+			}
 			summary := analysis.BuildAvailabilitySummary(listing, ticker, &company, factsErr.Error())
 			return summary, nil
 		}
 		summary := analysis.BuildSummary(listing, company, facts)
 		if len(summary.Metrics) == 0 {
+			if fallback, ok := a.buildMarketSummary(ctx, listing, ticker); ok && len(fallback.Metrics) > 0 {
+				return fallback, nil
+			}
 			summary.Notes = append(summary.Notes, fmt.Sprintf("Stockbridge recognizes %s as %s, but standardized SEC fundamentals are not available in the current local dataset. Try another ticker or update the fundamentals data source.", ticker, summary.CompanyName))
 		}
 		return a.addMarketNotes(ctx, ticker, facts, summary), nil
@@ -60,21 +73,59 @@ func (a *Analyzer) Analyze(ctx context.Context, rawTicker string) (analysis.Summ
 
 	company, err := a.secClient.LookupCompany(ctx, ticker)
 	if err != nil {
+		if summary, ok := a.buildMarketSummary(ctx, listing, ticker); ok {
+			return summary, nil
+		}
 		summary := analysis.BuildAvailabilitySummary(listing, ticker, nil, err.Error())
 		return summary, nil
 	}
 
 	facts, err := a.secClient.CompanyFacts(ctx, company.CIK)
 	if err != nil {
+		if summary, ok := a.buildMarketSummary(ctx, listing, ticker); ok {
+			return summary, nil
+		}
 		summary := analysis.BuildAvailabilitySummary(listing, ticker, &company, err.Error())
 		return summary, nil
 	}
 
 	summary := analysis.BuildSummary(listing, company, facts)
 	if len(summary.Metrics) == 0 {
+		if fallback, ok := a.buildMarketSummary(ctx, listing, ticker); ok && len(fallback.Metrics) > 0 {
+			return fallback, nil
+		}
 		summary.Notes = append(summary.Notes, fmt.Sprintf("Stockbridge recognizes %s as %s, but standardized SEC fundamentals are not available in the current local dataset. Try another ticker or update the fundamentals data source.", ticker, summary.CompanyName))
 	}
 	return a.addMarketNotes(ctx, ticker, facts, summary), nil
+}
+
+func (a *Analyzer) buildMarketSummary(ctx context.Context, listing symbols.Listing, ticker string) (analysis.Summary, bool) {
+	if a.fundamentalsClient == nil || !a.fundamentalsClient.Configured() {
+		return analysis.Summary{}, false
+	}
+
+	marketCtx, cancel := context.WithTimeout(ctx, marketSummaryTimeout)
+	defer cancel()
+
+	snapshot, err := a.fundamentalsClient.Snapshot(marketCtx, ticker)
+	if err != nil {
+		return analysis.Summary{}, false
+	}
+
+	latestPrice, err := a.marketClient.LatestClose(marketCtx, ticker)
+	var price *market.LatestPrice
+	if err == nil {
+		price = &latestPrice
+	}
+
+	summary := analysis.BuildMarketSummary(listing, snapshot.Company, snapshot, price)
+	if len(summary.Metrics) == 0 {
+		return analysis.Summary{}, false
+	}
+	if err != nil {
+		summary.Notes = append(summary.Notes, fmt.Sprintf("P/E ratio unavailable because latest price data could not be fetched: %v", err))
+	}
+	return summary, true
 }
 
 func (a *Analyzer) addMarketNotes(ctx context.Context, ticker string, facts sec.CompanyFacts, summary analysis.Summary) analysis.Summary {

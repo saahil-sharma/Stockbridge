@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"stockbridge/internal/data/fundamentals"
 	"stockbridge/internal/data/market"
 	"stockbridge/internal/data/sec"
 	"stockbridge/internal/data/symbols"
@@ -36,23 +37,24 @@ type Source struct {
 }
 
 func BuildSummary(listing symbols.Listing, company sec.Company, facts sec.CompanyFacts) Summary {
-	summary := Summary{
-		CompanyName: firstNonEmpty(facts.EntityName, company.Title, listing.SecurityName),
-		Ticker:      company.Ticker,
-		CIK:         company.CIK,
-		Listing:     listing,
-		Sources: []Source{
+	summary := buildSummary(
+		listing,
+		firstNonEmpty(facts.EntityName, company.Title, listing.SecurityName),
+		company.Ticker,
+		company.CIK,
+		[]Source{
 			{Name: "Nasdaq Trader symbol directory", URL: listing.SourceURL, RetrievedAt: listing.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
 			{Name: "SEC company tickers", URL: company.SourceURL, RetrievedAt: company.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
 			{Name: "SEC company facts", URL: facts.SourceURL, RetrievedAt: facts.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
 		},
-		Notes: []string{
-			"Report uses public listing and SEC XBRL company-facts data only.",
+		[]string{
+			"Report uses public listing and SEC XBRL company-facts data when available.",
 			"P/E ratio is derived from the latest fetched close and SEC annual diluted EPS when both are available.",
 			"Historical price charts are available in the web UI; additional valuation ratios and recent news are planned provider integrations.",
 			"This output is informational and is not personalized financial advice.",
 		},
-	}
+		nil,
+	)
 
 	for _, spec := range metricSpecs {
 		if metric, ok := latestMetric(facts, spec); ok {
@@ -60,6 +62,40 @@ func BuildSummary(listing symbols.Listing, company sec.Company, facts sec.Compan
 		}
 	}
 
+	return summary
+}
+
+func BuildMarketSummary(listing symbols.Listing, company fundamentals.Company, snapshot fundamentals.Snapshot, latestPrice *market.LatestPrice) Summary {
+	sources := []Source{
+		{Name: "Nasdaq Trader symbol directory", URL: listing.SourceURL, RetrievedAt: listing.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
+		{Name: "Financial Modeling Prep profile", URL: snapshot.Company.SourceURL, RetrievedAt: snapshot.Company.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
+	}
+	if len(snapshot.Sources) > 1 {
+		for _, source := range snapshot.Sources[1:] {
+			sources = append(sources, Source{Name: source.Name, URL: source.URL, RetrievedAt: source.RetrievedAt.Format("2006-01-02 15:04:05 MST")})
+		}
+	}
+	if latestPrice != nil {
+		sources = append(sources, Source{Name: latestPrice.SourceName, URL: latestPrice.SourceURL, RetrievedAt: latestPrice.RetrievedAt.Format("2006-01-02 15:04:05 MST")})
+	}
+
+	summary := buildSummary(
+		listing,
+		firstNonEmpty(snapshot.Company.Name, company.Name, listing.SecurityName),
+		snapshot.Company.Ticker,
+		0,
+		sources,
+		append([]string{
+			"Report uses public listing and market-data fundamentals when SEC company-facts data are unavailable.",
+			"Revenue, cash flow, leverage, and valuation ratios are normalized from provider statements and the latest market close.",
+		}, snapshot.Notes...),
+		nil,
+	)
+
+	for _, metric := range snapshot.Metrics {
+		summary.Metrics = append(summary.Metrics, convertMetric(metric))
+	}
+	appendMarketValuations(&summary, snapshot, latestPrice)
 	return summary
 }
 
@@ -91,11 +127,127 @@ func BuildAvailabilitySummary(listing symbols.Listing, ticker string, company *s
 		Sources:     sources,
 		Notes: []string{
 			note,
-			"Report uses public listing and SEC XBRL company-facts data only.",
+			"Report uses public listing and standardized fundamentals data when available.",
 			"Historical price charts are available when market price data is available for this ticker.",
 			"This output is informational and is not personalized financial advice.",
 		},
 	}
+}
+
+func buildSummary(listing symbols.Listing, companyName, ticker string, cik int, sources []Source, notes []string, metrics []Metric) Summary {
+	return Summary{
+		CompanyName: companyName,
+		Ticker:      ticker,
+		CIK:         cik,
+		Listing:     listing,
+		Metrics:     metrics,
+		Sources:     sources,
+		Notes:       notes,
+	}
+}
+
+func convertMetric(metric fundamentals.Metric) Metric {
+	return Metric{
+		Name:    metric.Name,
+		Value:   metric.Value,
+		Unit:    metric.Unit,
+		Period:  metric.Period,
+		Form:    metric.Source,
+		Concept: metric.Concept,
+	}
+}
+
+func appendMarketValuations(summary *Summary, snapshot fundamentals.Snapshot, latestPrice *market.LatestPrice) {
+	if summary == nil {
+		return
+	}
+
+	revenue, ok := metricValue(summary.Metrics, "Revenue")
+	if ok && snapshot.Company.MarketCap > 0 && revenue > 0 {
+		summary.Metrics = append(summary.Metrics, Metric{
+			Name:    "P/S ratio",
+			Value:   snapshot.Company.MarketCap / revenue,
+			Unit:    "x",
+			Period:  latestMetricPeriod(summary.Metrics),
+			Form:    "market cap / revenue",
+			Concept: "marketCap/revenue",
+		})
+	}
+
+	equity, ok := metricValue(summary.Metrics, "Stockholders' equity")
+	if ok && snapshot.Company.MarketCap > 0 && equity > 0 {
+		summary.Metrics = append(summary.Metrics, Metric{
+			Name:    "P/B ratio",
+			Value:   snapshot.Company.MarketCap / equity,
+			Unit:    "x",
+			Period:  latestMetricPeriod(summary.Metrics),
+			Form:    "market cap / equity",
+			Concept: "marketCap/equity",
+		})
+	}
+
+	debt, debtOK := metricValue(summary.Metrics, "Total debt")
+	if debtOK && equity > 0 {
+		summary.Metrics = append(summary.Metrics, Metric{
+			Name:    "Debt/equity ratio",
+			Value:   debt / equity,
+			Unit:    "x",
+			Period:  latestMetricPeriod(summary.Metrics),
+			Form:    "balance sheet",
+			Concept: "debt/equity",
+		})
+	}
+
+	if snapshot.Company.MarketCap > 0 && debtOK {
+		cash, cashOK := metricValue(summary.Metrics, "Cash and equivalents")
+		ev := snapshot.Company.MarketCap + debt
+		if cashOK {
+			ev -= cash
+		}
+		summary.Metrics = append(summary.Metrics, Metric{
+			Name:    "Enterprise value",
+			Value:   ev,
+			Unit:    "USD",
+			Period:  latestMetricPeriod(summary.Metrics),
+			Form:    "market cap + debt - cash",
+			Concept: "enterpriseValue",
+		})
+	}
+
+	if latestPrice != nil {
+		eps, ok := metricValue(summary.Metrics, "Diluted EPS")
+		if !ok {
+			eps, ok = metricValue(summary.Metrics, "Basic EPS")
+		}
+		if ok && eps > 0 {
+			summary.Metrics = append(summary.Metrics, Metric{
+				Name:    "P/E ratio",
+				Value:   latestPrice.Price / eps,
+				Unit:    "x",
+				Period:  latestPrice.Time.Format("2006-01-02 15:04"),
+				Form:    "market close / earnings",
+				Concept: "LatestClose/AnnualEarningsPerShareDiluted",
+			})
+		}
+	}
+}
+
+func metricValue(metrics []Metric, name string) (float64, bool) {
+	for _, metric := range metrics {
+		if metric.Name == name {
+			return metric.Value, true
+		}
+	}
+	return 0, false
+}
+
+func latestMetricPeriod(metrics []Metric) string {
+	for _, metric := range metrics {
+		if metric.Period != "" {
+			return metric.Period
+		}
+	}
+	return ""
 }
 
 func AddPERatio(summary *Summary, facts sec.CompanyFacts, latestPrice market.LatestPrice) bool {

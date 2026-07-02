@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"stockbridge/internal/analysis"
 )
 
@@ -24,21 +22,9 @@ const (
 func RenderStyled(summary analysis.Summary) string {
 	var b strings.Builder
 
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colorPaper)).
-		Background(lipgloss.Color(colorDeepBlue)).
-		Padding(0, 2).
-		Render("Stockbridge")
-
-	subtitle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colorLavender)).
-		Render("Fundamental Snapshot")
-
-	company := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colorCyan)).
-		Render(fmt.Sprintf("%s (%s)", summary.CompanyName, summary.Ticker))
+	title := ansiStyle("Stockbridge", "1", "38;5;"+colorPaper, "48;5;"+colorDeepBlue, "2")
+	subtitle := ansiStyle("Fundamental Snapshot", "38;5;"+colorLavender)
+	company := ansiStyle(fmt.Sprintf("%s (%s)", summary.CompanyName, summary.Ticker), "1", "38;5;"+colorCyan)
 
 	meta := []string{}
 	if summary.CIK != 0 {
@@ -55,9 +41,9 @@ func RenderStyled(summary analysis.Summary) string {
 
 	fmt.Fprintf(&b, "%s %s\n\n%s\n%s\n", title, subtitle, company, strings.Join(meta, "\n"))
 
-	fmt.Fprintf(&b, "\n%s\n", sectionTitle("SEC Fundamentals"))
+	fmt.Fprintf(&b, "\n%s\n", sectionTitle("Fundamentals"))
 	if len(summary.Metrics) == 0 {
-		fmt.Fprintf(&b, "%s\n", muted("No supported SEC metrics were found."))
+		fmt.Fprintf(&b, "%s\n", muted("No supported fundamentals were found."))
 	} else {
 		for _, metric := range summary.Metrics {
 			fmt.Fprintf(&b, "%s\n", metricRow(metric))
@@ -75,42 +61,18 @@ func RenderStyled(summary analysis.Summary) string {
 }
 
 func sectionTitle(value string) string {
-	text := strings.ToUpper(value)
-	return lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colorPaper)).
-		Background(lipgloss.Color(colorPanel)).
-		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color(colorCyan)).
-		Padding(0, 2).
-		MarginTop(1).
-		Render(text)
+	return ansiStyle(strings.ToUpper(value), "1", "38;5;"+colorPaper, "48;5;"+colorPanel)
 }
 
 func labelValue(label, value string) string {
-	labelStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colorMuted)).
-		Width(12)
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colorText))
-	return labelStyle.Render(label+":") + " " + valueStyle.Render(value)
+	return ansiStyle(label+":", "38;5;"+colorMuted) + " " + ansiStyle(value, "38;5;"+colorText)
 }
 
 func metricRow(metric analysis.Metric) string {
-	nameStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colorText)).
-		Width(24)
-	valueStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(metricColor(metric.Name)).
-		Width(16).
-		Align(lipgloss.Right)
-	detailStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colorMuted))
-
-	details := metricDetails(metric)
-	return nameStyle.Render(metric.Name) + " " + valueStyle.Render(formatValue(metric.Value, metric.Unit)) + "  " + detailStyle.Render(details)
+	name := ansiStyle(metric.Name, "1", "38;5;"+colorText)
+	value := ansiStyle(formatValue(metric.Value, metric.Unit), "1", "38;5;"+metricColorCode(metric.Name))
+	details := ansiStyle(metricDetails(metric), "38;5;"+colorMuted)
+	return fmt.Sprintf("%-24s %-16s  %s", name, value, details)
 }
 
 func metricDetails(metric analysis.Metric) string {
@@ -130,18 +92,18 @@ func metricDetails(metric analysis.Metric) string {
 	return strings.Join(parts, "  ")
 }
 
-func metricColor(name string) lipgloss.Color {
+func metricColorCode(name string) string {
 	switch name {
-	case "Net income", "Operating cash flow", "Basic EPS", "Diluted EPS":
-		return lipgloss.Color(colorGreen)
+	case "Net income", "Operating cash flow", "Basic EPS", "Diluted EPS", "Revenue growth", "Net income growth", "Gross margin", "Operating margin", "Net margin":
+		return colorGreen
 	case "Liabilities", "Capital expenditures":
-		return lipgloss.Color(colorAmber)
+		return colorAmber
 	case "P/E ratio":
-		return lipgloss.Color(colorCyan)
+		return colorCyan
 	case "Assets", "Stockholders' equity", "Cash and equivalents":
-		return lipgloss.Color(colorLavender)
+		return colorLavender
 	default:
-		return lipgloss.Color(colorCyan)
+		return colorCyan
 	}
 }
 
@@ -150,31 +112,54 @@ func notesBlock(notes []string) string {
 	body.WriteString(sectionTitle("Notes"))
 	body.WriteString("\n")
 	for _, note := range notes {
-		body.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(colorAmber)).Render("• "))
-		body.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(colorText)).Render(note))
+		body.WriteString(ansiStyle("• ", "38;5;"+colorAmber))
+		body.WriteString(ansiStyle(note, "38;5;"+colorText))
 		body.WriteString("\n")
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colorAmber)).
-		Padding(1, 2).
-		Width(96).
-		Render(strings.TrimRight(body.String(), "\n"))
+	return borderBox(strings.TrimRight(body.String(), "\n"), colorAmber)
 }
 
 func sourceRow(source analysis.Source) string {
-	name := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colorText)).
-		Render(source.Name)
-	url := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colorCyan)).
-		Render(source.URL)
+	name := ansiStyle(source.Name, "1", "38;5;"+colorText)
+	url := ansiStyle(source.URL, "38;5;"+colorCyan)
 	retrieved := muted("retrieved: " + source.RetrievedAt)
 	return fmt.Sprintf("%s\n  %s\n  %s", name, url, retrieved)
 }
 
 func muted(value string) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(colorMuted)).Render(value)
+	return ansiStyle(value, "38;5;"+colorMuted)
+}
+
+func ansiStyle(text string, codes ...string) string {
+	if len(codes) == 0 || text == "" {
+		return text
+	}
+	return "\x1b[" + strings.Join(codes, ";") + "m" + text + "\x1b[0m"
+}
+
+func borderBox(body, borderColor string) string {
+	lines := strings.Split(body, "\n")
+	width := 0
+	for _, line := range lines {
+		if len(line) > width {
+			width = len(line)
+		}
+	}
+	top := ansiStyle("┌"+strings.Repeat("─", width+2)+"┐", "38;5;"+borderColor)
+	bottom := ansiStyle("└"+strings.Repeat("─", width+2)+"┘", "38;5;"+borderColor)
+
+	var b strings.Builder
+	b.WriteString(top)
+	b.WriteString("\n")
+	for _, line := range lines {
+		padding := strings.Repeat(" ", width-len(line))
+		b.WriteString(ansiStyle("│ ", "38;5;"+borderColor))
+		b.WriteString(line)
+		b.WriteString(padding)
+		b.WriteString(ansiStyle(" │", "38;5;"+borderColor))
+		b.WriteString("\n")
+	}
+	b.WriteString(bottom)
+	return b.String()
 }

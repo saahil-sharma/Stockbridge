@@ -31,7 +31,8 @@ What it does today:
   2. Detects the listing exchange and market when available.
   3. Maps the ticker to an SEC CIK when available.
   4. Fetches SEC XBRL company-facts data when available.
-  5. Renders a styled terminal report with fundamentals, notes, sources, and
+  5. Falls back to market-data fundamentals when SEC company-facts data are unavailable.
+  6. Renders a styled terminal report with fundamentals, notes, sources, and
      retrieval times.
 
 Report presentation:
@@ -48,7 +49,7 @@ Report presentation:
 
 Available commands:
   stockbridge analyze <ticker>
-      Fetch listing and SEC fundamentals for a ticker.
+      Fetch listing and fundamentals for a ticker.
 
   stockbridge about
       Show this project overview and command guide.
@@ -76,14 +77,15 @@ Examples:
   stockbridge analyze AMZN --output reports/AMZN.txt
 
 Current limitations:
-  - Valuation ratios, interactive charts, and news are not integrated into the
-    active CLI report yet.
+  - Recent news is not integrated into the active CLI report yet.
   - Experimental chart-fetching code is retained for the future desktop/web UI
     but is currently sidelined from the command output.
   - SEC XBRL reporting tags differ across companies, so some metrics may be
     missing or less fresh than others.
   - Foreign issuers, ADRs, ETFs, funds, and unusual securities may resolve by
     ticker but may not provide standardized SEC company-facts fundamentals.
+  - When SEC company-facts coverage is incomplete, the report may depend on a
+    market-data provider and its native currency/reporting conventions.
   - Output is informational and is not personalized financial advice.
 `
 }

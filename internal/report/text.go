@@ -25,13 +25,13 @@ func RenderText(summary analysis.Summary) string {
 		fmt.Fprintf(&b, "Symbol directory timestamp: %s\n", summary.Listing.FileCreatedAt)
 	}
 
-	fmt.Fprintf(&b, "\nSEC Fundamentals\n")
+	fmt.Fprintf(&b, "\nFundamentals\n")
 	fmt.Fprintf(&b, "----------------\n")
 	if len(summary.Metrics) == 0 {
-		fmt.Fprintf(&b, "No supported SEC metrics were found.\n")
+		fmt.Fprintf(&b, "No supported fundamentals were found.\n")
 	} else {
 		for _, metric := range summary.Metrics {
-			fmt.Fprintf(&b, "%-24s %16s  period=%s form=%s filed=%s concept=%s\n",
+			fmt.Fprintf(&b, "%-24s %16s  period=%s source=%s filed=%s concept=%s\n",
 				metric.Name+":",
 				formatValue(metric.Value, metric.Unit),
 				metric.Period,
@@ -65,6 +65,8 @@ func formatValue(value float64, unit string) string {
 		return fmt.Sprintf("$%.2f/share", value)
 	case "x":
 		return fmt.Sprintf("%.2fx", value)
+	case "%":
+		return fmt.Sprintf("%.2f%%", value)
 	default:
 		return fmt.Sprintf("%.2f %s", value, unit)
 	}

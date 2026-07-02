@@ -90,7 +90,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		} else {
 			data.Report = &summary
 			data.Query = summary.Ticker
-			if chart, err := s.analyzer.PriceChart(ctx, summary.Ticker); err == nil {
+			chartCtx, chartCancel := context.WithTimeout(ctx, 4*time.Second)
+			defer chartCancel()
+			if chart, err := s.analyzer.PriceChart(chartCtx, summary.Ticker); err == nil {
 				view := buildChartView(chart)
 				data.Chart = &view
 			} else {
@@ -164,6 +166,8 @@ func formatMetric(metric analysis.Metric) string {
 		return "$" + formatFloat(metric.Value) + "/share"
 	case "x":
 		return formatFloat(metric.Value) + "x"
+	case "%":
+		return formatFloat(metric.Value) + "%"
 	default:
 		return formatFloat(metric.Value) + " " + metric.Unit
 	}
@@ -1199,14 +1203,14 @@ const indexHTML = `<!doctype html>
         </div>
 
         <section>
-          <h2>SEC Fundamentals</h2>
+          <h2>Fundamentals</h2>
           <table class="metrics">
             <thead>
               <tr>
                 <th>Metric</th>
                 <th>Value</th>
                 <th>Period</th>
-                <th>Filing</th>
+                <th>Source</th>
                 <th>Concept</th>
               </tr>
             </thead>
@@ -1223,7 +1227,7 @@ const indexHTML = `<!doctype html>
               {{end}}
               {{else}}
                 <tr>
-                  <td class="metric-detail" colspan="5">No standardized SEC fundamentals are available for this ticker in the current data source.</td>
+                  <td class="metric-detail" colspan="5">No supported fundamentals are available for this ticker in the current data source.</td>
                 </tr>
               {{end}}
             </tbody>
