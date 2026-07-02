@@ -1133,6 +1133,8 @@ const indexHTML = `<!doctype html>
       const watchlistButton = document.getElementById("watchlist-toggle");
       const watchlistPanel = document.getElementById("watchlist-panel");
       const watchlistItems = document.getElementById("watchlist-items");
+      const searchForm = document.querySelector('form[action="/"]');
+      const tickerInput = document.getElementById("ticker-input");
       const watchlistStorageKey = "stockbridge-watchlist";
 
       function getWatchlist() {
@@ -1187,6 +1189,23 @@ const indexHTML = `<!doctype html>
         saveWatchlist(getWatchlist().filter(function (savedTicker) { return savedTicker !== normalizedTicker; }));
       }
 
+      function loadTickerFromWatchlist(ticker) {
+        const normalizedTicker = String(ticker || "").trim().toUpperCase();
+        if (!normalizedTicker) return;
+        if (tickerInput) tickerInput.value = normalizedTicker;
+        updateStarState(normalizedTicker);
+        setWatchlistOpen(false);
+        if (searchForm) {
+          if (searchForm.requestSubmit) {
+            searchForm.requestSubmit();
+          } else {
+            searchForm.submit();
+          }
+          return;
+        }
+        window.location.href = "/?ticker=" + encodeURIComponent(normalizedTicker);
+      }
+
       function renderWatchlist() {
         if (!watchlistItems) return;
         const list = getWatchlist();
@@ -1208,9 +1227,7 @@ const indexHTML = `<!doctype html>
           tickerButton.textContent = ticker;
           tickerButton.setAttribute("aria-label", "Load " + ticker + " report");
           tickerButton.addEventListener("click", function () {
-            const input = document.getElementById("ticker-input");
-            if (input) input.value = ticker;
-            window.location.href = "/?ticker=" + encodeURIComponent(ticker);
+            loadTickerFromWatchlist(ticker);
           });
 
           const removeButton = document.createElement("button");
