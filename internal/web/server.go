@@ -442,6 +442,36 @@ const indexHTML = `<!doctype html>
 	      letter-spacing: 0.03em;
 	      text-transform: uppercase;
 	    }
+	    .company-heading {
+	      display: flex;
+	      align-items: center;
+	      gap: 10px;
+	      flex-wrap: wrap;
+	    }
+	    .watchlist-star {
+	      display: inline-flex;
+	      align-items: center;
+	      justify-content: center;
+	      width: 40px;
+	      min-width: 40px;
+	      height: 40px;
+	      min-height: 40px;
+	      padding: 0;
+	      background: transparent;
+	      border: 1px solid var(--line);
+	      color: var(--line);
+	      font-family: var(--font-main);
+	      font-size: 22px;
+	      line-height: 1;
+	      letter-spacing: 0;
+	      text-transform: none;
+	    }
+	    .watchlist-star:hover,
+	    .watchlist-star.active {
+	      background: var(--panel);
+	      border-color: var(--forest);
+	      color: var(--forest);
+	    }
 	    .dossier-label {
 	      display: inline-block;
 	      margin-bottom: 10px;
@@ -756,6 +786,19 @@ const indexHTML = `<!doctype html>
 	      letter-spacing: 0;
 	      text-transform: none;
 	    }
+	    html[data-theme="modern"] .watchlist-star {
+	      border: 1px solid var(--line);
+	      border-radius: 6px;
+	      background: white;
+	      color: var(--line);
+	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	    }
+	    html[data-theme="modern"] .watchlist-star:hover,
+	    html[data-theme="modern"] .watchlist-star.active {
+	      background: var(--panel);
+	      border-color: #138a5b;
+	      color: #138a5b;
+	    }
 	    html[data-theme="modern"] h2 {
 	      color: white;
 	      background: #303747;
@@ -867,7 +910,10 @@ const indexHTML = `<!doctype html>
 	      <section class="report">
 	        <div class="summary">
 	          <div class="dossier-label">Company file</div>
-	          <h1>{{.Report.CompanyName}} ({{.Report.Ticker}})</h1>
+	          <div class="company-heading">
+	            <h1>{{.Report.CompanyName}} ({{.Report.Ticker}})</h1>
+	            <button id="watchlist-star" class="watchlist-star" type="button" data-ticker="{{.Report.Ticker}}" aria-label="Add {{.Report.Ticker}} to watchlist">☆</button>
+	          </div>
           <div class="meta">
             <div><span class="label">CIK</span>{{printf "%010d" .Report.CIK}}</div>
             <div><span class="label">Exchange</span>{{.Report.Listing.Exchange}}</div>
@@ -951,6 +997,55 @@ const indexHTML = `<!doctype html>
       const button = document.getElementById("theme-toggle");
       const menu = document.getElementById("theme-menu");
       const options = Array.from(document.querySelectorAll("[data-theme-choice]"));
+      const starButton = document.getElementById("watchlist-star");
+      const watchlistStorageKey = "stockbridge-watchlist";
+
+      function getWatchlist() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(watchlistStorageKey) || "[]");
+          if (!Array.isArray(parsed)) return [];
+          return parsed
+            .map(function (ticker) { return String(ticker).trim().toUpperCase(); })
+            .filter(Boolean)
+            .filter(function (ticker, index, list) { return list.indexOf(ticker) === index; });
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveWatchlist(list) {
+        const normalized = list
+          .map(function (ticker) { return String(ticker).trim().toUpperCase(); })
+          .filter(Boolean)
+          .filter(function (ticker, index, normalizedList) { return normalizedList.indexOf(ticker) === index; });
+        localStorage.setItem(watchlistStorageKey, JSON.stringify(normalized));
+      }
+
+      function isInWatchlist(ticker) {
+        const normalizedTicker = String(ticker || "").trim().toUpperCase();
+        return normalizedTicker !== "" && getWatchlist().includes(normalizedTicker);
+      }
+
+      function toggleWatchlistTicker(ticker) {
+        const normalizedTicker = String(ticker || "").trim().toUpperCase();
+        if (!normalizedTicker) return [];
+        const list = getWatchlist();
+        const nextList = list.includes(normalizedTicker)
+          ? list.filter(function (savedTicker) { return savedTicker !== normalizedTicker; })
+          : list.concat(normalizedTicker);
+        saveWatchlist(nextList);
+        return nextList;
+      }
+
+      function updateStarState(ticker) {
+        if (!starButton) return;
+        const normalizedTicker = String(ticker || starButton.dataset.ticker || "").trim().toUpperCase();
+        const saved = isInWatchlist(normalizedTicker);
+        starButton.dataset.ticker = normalizedTicker;
+        starButton.classList.toggle("active", saved);
+        starButton.textContent = saved ? "★" : "☆";
+        starButton.setAttribute("aria-label", (saved ? "Remove " : "Add ") + normalizedTicker + (saved ? " from watchlist" : " to watchlist"));
+      }
 
       function setTheme(theme) {
         root.dataset.theme = theme;
@@ -996,6 +1091,15 @@ const indexHTML = `<!doctype html>
             setMenuOpen(false);
             button.focus();
           }
+        });
+      }
+
+      if (starButton) {
+        updateStarState(starButton.dataset.ticker);
+        starButton.addEventListener("click", function () {
+          const ticker = starButton.dataset.ticker;
+          toggleWatchlistTicker(ticker);
+          updateStarState(ticker);
         });
       }
     })();
