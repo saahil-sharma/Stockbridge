@@ -211,7 +211,12 @@ const indexHTML = `<!doctype html>
 	        "ivory-research-lab",
 	        "crisis-room"
 	      ];
-	      const storedTheme = localStorage.getItem("stockbridge-theme");
+	      let storedTheme = "bank-ledger";
+	      try {
+	        storedTheme = localStorage.getItem("stockbridge-theme") || "bank-ledger";
+	      } catch (error) {
+	        storedTheme = "bank-ledger";
+	      }
 	      const legacyTheme = storedTheme === "oldschool" ? "bank-ledger" : (storedTheme === "modern" ? "ivory-research-lab" : storedTheme);
 	      document.documentElement.dataset.theme = validThemes.includes(legacyTheme) ? legacyTheme : "bank-ledger";
 	    })();
@@ -1365,7 +1370,11 @@ const indexHTML = `<!doctype html>
           .map(function (ticker) { return String(ticker).trim().toUpperCase(); })
           .filter(Boolean)
           .filter(function (ticker, index, normalizedList) { return normalizedList.indexOf(ticker) === index; });
-        localStorage.setItem(watchlistStorageKey, JSON.stringify(normalized));
+        try {
+          localStorage.setItem(watchlistStorageKey, JSON.stringify(normalized));
+        } catch (error) {
+          return;
+        }
       }
 
       function isInWatchlist(ticker) {
