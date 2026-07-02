@@ -108,8 +108,25 @@ func metricRow(metric analysis.Metric) string {
 	detailStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(colorMuted))
 
-	details := fmt.Sprintf("period %s  %s filed %s  %s", metric.Period, metric.Form, metric.Filed, metric.Concept)
+	details := metricDetails(metric)
 	return nameStyle.Render(metric.Name) + " " + valueStyle.Render(formatValue(metric.Value, metric.Unit)) + "  " + detailStyle.Render(details)
+}
+
+func metricDetails(metric analysis.Metric) string {
+	parts := []string{}
+	if metric.Period != "" {
+		parts = append(parts, "period "+metric.Period)
+	}
+	if metric.Form != "" {
+		parts = append(parts, metric.Form)
+	}
+	if metric.Filed != "" {
+		parts = append(parts, "filed "+metric.Filed)
+	}
+	if metric.Concept != "" {
+		parts = append(parts, metric.Concept)
+	}
+	return strings.Join(parts, "  ")
 }
 
 func metricColor(name string) lipgloss.Color {
@@ -118,6 +135,8 @@ func metricColor(name string) lipgloss.Color {
 		return lipgloss.Color(colorGreen)
 	case "Liabilities", "Capital expenditures":
 		return lipgloss.Color(colorAmber)
+	case "P/E ratio":
+		return lipgloss.Color(colorCyan)
 	case "Assets", "Stockholders' equity", "Cash and equivalents":
 		return lipgloss.Color(colorLavender)
 	default:

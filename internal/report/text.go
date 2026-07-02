@@ -61,6 +61,8 @@ func formatValue(value float64, unit string) string {
 		return compactUSD(value)
 	case "USD/shares":
 		return fmt.Sprintf("$%.2f/share", value)
+	case "x":
+		return fmt.Sprintf("%.2fx", value)
 	default:
 		return fmt.Sprintf("%.2f %s", value, unit)
 	}

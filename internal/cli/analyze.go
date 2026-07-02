@@ -10,9 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"stockbridge/internal/analysis"
-	"stockbridge/internal/data/sec"
-	"stockbridge/internal/data/symbols"
+	"stockbridge/internal/app"
 	"stockbridge/internal/report"
 )
 
@@ -58,36 +56,17 @@ the report remains portable and easy to diff.`,
 }
 
 func runAnalyze(ctx context.Context, rawTicker string, opts analyzeOptions) error {
-	ticker, err := symbols.NormalizeTicker(rawTicker)
-	if err != nil {
-		return err
-	}
-
 	format := strings.ToLower(opts.format)
 	if format != "styled" && format != "text" {
 		return fmt.Errorf("unsupported format %q; currently supported: styled, text", opts.format)
 	}
 
 	httpClient := &http.Client{Timeout: 20 * time.Second}
-	symbolClient := symbols.NewClient(httpClient)
-	secClient := sec.NewClient(httpClient)
-
-	listing, err := symbolClient.Lookup(ctx, ticker)
+	analyzer := app.NewAnalyzer(httpClient)
+	summary, err := analyzer.Analyze(ctx, rawTicker)
 	if err != nil {
 		return err
 	}
-
-	company, err := secClient.LookupCompany(ctx, ticker)
-	if err != nil {
-		return err
-	}
-
-	facts, err := secClient.CompanyFacts(ctx, company.CIK)
-	if err != nil {
-		return err
-	}
-
-	summary := analysis.BuildSummary(listing, company, facts)
 
 	if opts.output == "" {
 		fmt.Print(report.RenderStyled(summary))

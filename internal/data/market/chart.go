@@ -42,6 +42,15 @@ type Series struct {
 	RetrievedAt time.Time
 }
 
+type LatestPrice struct {
+	Ticker      string
+	Price       float64
+	Time        time.Time
+	SourceName  string
+	SourceURL   string
+	RetrievedAt time.Time
+}
+
 type Bundle struct {
 	Ticker      string
 	Series      map[Period]Series
@@ -85,6 +94,26 @@ func (c *Client) FetchBundle(ctx context.Context, ticker string) (Bundle, error)
 	}
 
 	return bundle, nil
+}
+
+func (c *Client) LatestClose(ctx context.Context, ticker string) (LatestPrice, error) {
+	series, err := c.FetchSeries(ctx, ticker, PeriodOneDay)
+	if err != nil {
+		return LatestPrice{}, err
+	}
+	if len(series.Points) == 0 {
+		return LatestPrice{}, fmt.Errorf("latest close for %s was not available", ticker)
+	}
+
+	point := series.Points[len(series.Points)-1]
+	return LatestPrice{
+		Ticker:      ticker,
+		Price:       point.Close,
+		Time:        point.Time,
+		SourceName:  "Yahoo Finance chart API",
+		SourceURL:   series.SourceURL,
+		RetrievedAt: series.RetrievedAt,
+	}, nil
 }
 
 func (c *Client) FetchSeries(ctx context.Context, ticker string, period Period) (Series, error) {

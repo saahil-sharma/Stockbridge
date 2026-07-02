@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"stockbridge/internal/data/market"
 	"stockbridge/internal/data/sec"
 	"stockbridge/internal/data/symbols"
 )
@@ -47,7 +48,8 @@ func BuildSummary(listing symbols.Listing, company sec.Company, facts sec.Compan
 		},
 		Notes: []string{
 			"Report uses public listing and SEC XBRL company-facts data only.",
-			"Historical chart code is currently sidelined for the future app UI; valuation ratios and recent news are planned provider integrations.",
+			"P/E ratio is derived from the latest fetched close and SEC annual diluted EPS when both are available.",
+			"Historical price charts are available in the web UI; additional valuation ratios and recent news are planned provider integrations.",
 			"This output is informational and is not personalized financial advice.",
 		},
 	}
@@ -59,6 +61,33 @@ func BuildSummary(listing symbols.Listing, company sec.Company, facts sec.Compan
 	}
 
 	return summary
+}
+
+func AddPERatio(summary *Summary, facts sec.CompanyFacts, latestPrice market.LatestPrice) bool {
+	if summary == nil || latestPrice.Price <= 0 {
+		return false
+	}
+
+	eps, ok := latestAnnualMetric(facts, metricSpec{Name: "Annual diluted EPS", Unit: "USD/shares", Concepts: []string{"EarningsPerShareDiluted"}})
+	if !ok || eps.Value <= 0 {
+		return false
+	}
+
+	summary.Metrics = append(summary.Metrics, Metric{
+		Name:    "P/E ratio",
+		Value:   latestPrice.Price / eps.Value,
+		Unit:    "x",
+		Period:  latestPrice.Time.Format("2006-01-02 15:04"),
+		Form:    eps.Form,
+		Filed:   eps.Filed,
+		Concept: "LatestClose/AnnualEarningsPerShareDiluted",
+	})
+	summary.Sources = append(summary.Sources, Source{
+		Name:        latestPrice.SourceName,
+		URL:         latestPrice.SourceURL,
+		RetrievedAt: latestPrice.RetrievedAt.Format("2006-01-02 15:04:05 MST"),
+	})
+	return true
 }
 
 type metricSpec struct {
@@ -129,9 +158,67 @@ func latestMetric(facts sec.CompanyFacts, spec metricSpec) (Metric, bool) {
 	return Metric{}, false
 }
 
+func latestAnnualMetric(facts sec.CompanyFacts, spec metricSpec) (Metric, bool) {
+	usgaap := facts.Facts["us-gaap"]
+	if usgaap == nil {
+		return Metric{}, false
+	}
+
+	for _, conceptName := range spec.Concepts {
+		concept, ok := usgaap[conceptName]
+		if !ok {
+			continue
+		}
+		units := concept.Units[spec.Unit]
+		if len(units) == 0 {
+			continue
+		}
+
+		candidates := make([]sec.FactUnit, 0, len(units))
+		for _, unit := range units {
+			if unit.Val == nil || !isAnnualForm(unit.Form) {
+				continue
+			}
+			candidates = append(candidates, unit)
+		}
+		if len(candidates) == 0 {
+			continue
+		}
+
+		sort.Slice(candidates, func(i, j int) bool {
+			if candidates[i].Filed == candidates[j].Filed {
+				return candidates[i].End > candidates[j].End
+			}
+			return candidates[i].Filed > candidates[j].Filed
+		})
+
+		best := candidates[0]
+		return Metric{
+			Name:    spec.Name,
+			Value:   *best.Val,
+			Unit:    spec.Unit,
+			Period:  best.End,
+			Form:    best.Form,
+			Filed:   best.Filed,
+			Concept: conceptName,
+		}, true
+	}
+
+	return Metric{}, false
+}
+
 func isUsefulForm(form string) bool {
 	switch strings.ToUpper(form) {
 	case "10-K", "10-Q", "20-F", "40-F":
+		return true
+	default:
+		return false
+	}
+}
+
+func isAnnualForm(form string) bool {
+	switch strings.ToUpper(form) {
+	case "10-K", "20-F", "40-F":
 		return true
 	default:
 		return false
