@@ -289,6 +289,7 @@ const indexHTML = `<!doctype html>
 	      padding: 22px;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
+	      border-radius: var(--radius);
 	      box-shadow: var(--header-shadow);
 	    }
 	    header::before,
@@ -367,7 +368,7 @@ const indexHTML = `<!doctype html>
 	      flex: 1 1 260px;
 	      min-height: 46px;
 	      border: 1px solid var(--line-dark);
-	      border-radius: 0;
+	      border-radius: var(--radius);
 	      padding: 0 14px;
 	      font-family: var(--font-main);
 	      font-size: 18px;
@@ -381,10 +382,10 @@ const indexHTML = `<!doctype html>
 	    button {
 	      min-height: 46px;
 	      border: 1px solid var(--line-dark);
-	      border-radius: 0;
+	      border-radius: var(--radius);
 	      padding: 0 18px;
 	      background: var(--charcoal);
-	      color: var(--paper);
+	      color: var(--button-text);
 	      font-family: var(--font-main);
 	      font-weight: 800;
 	      letter-spacing: 0.05em;
@@ -434,6 +435,7 @@ const indexHTML = `<!doctype html>
 	      padding: 10px;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
+	      border-radius: var(--radius);
 	      box-shadow: 0 12px 26px var(--shadow);
 	    }
 	    .theme-menu.open {
@@ -462,7 +464,7 @@ const indexHTML = `<!doctype html>
 	    }
 	    .theme-option:hover,
 	    .theme-option.active {
-	      background: var(--burgundy);
+	      background: var(--button-bg);
 	      color: var(--paper);
 	      border-color: var(--line-dark);
 	    }
@@ -483,6 +485,7 @@ const indexHTML = `<!doctype html>
 	      padding: 14px;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
+	      border-radius: var(--radius);
 	      box-shadow: 0 14px 30px var(--shadow);
 	    }
 	    .watchlist-panel.open {
@@ -565,6 +568,7 @@ const indexHTML = `<!doctype html>
 	      position: relative;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
+	      border-radius: var(--radius);
 	      padding: 22px;
 	      box-shadow: var(--panel-shadow);
 	    }
@@ -623,7 +627,7 @@ const indexHTML = `<!doctype html>
 	    }
 	    h2 {
 	      display: inline-block;
-	      color: var(--paper);
+	      color: var(--heading-text);
 	      background: var(--ink-soft);
 	      border: 1px solid var(--line-dark);
 	      border-bottom: 3px double var(--gold);
@@ -658,6 +662,7 @@ const indexHTML = `<!doctype html>
 	      border-collapse: collapse;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
+	      border-radius: var(--radius);
 	      overflow: hidden;
 	      box-shadow: 0 8px 18px var(--shadow);
 	    }
@@ -718,10 +723,10 @@ const indexHTML = `<!doctype html>
 	      gap: 8px;
 	      margin: 10px 0 14px;
     }
-    .range-tab {
+	    .range-tab {
 	      min-height: 34px;
 	      border: 1px solid var(--line);
-	      border-radius: 0;
+	      border-radius: var(--radius);
 	      padding: 0 13px;
 	      background: var(--panel);
 	      color: var(--ink);
@@ -731,7 +736,7 @@ const indexHTML = `<!doctype html>
 	      cursor: pointer;
 	    }
 	    .range-tab.active {
-	      background: var(--burgundy);
+	      background: var(--button-bg);
 	      border-color: var(--line-dark);
 	      color: var(--paper);
 	    }
@@ -741,6 +746,7 @@ const indexHTML = `<!doctype html>
 	      min-height: 330px;
 	      background: var(--surface-inset);
 	      border: 1px solid var(--line);
+	      border-radius: var(--radius);
 	      overflow: hidden;
 	      box-shadow: inset 0 0 0 1px rgba(111, 86, 54, 0.14);
 	    }
@@ -789,11 +795,41 @@ const indexHTML = `<!doctype html>
 	      color: var(--link);
 	      overflow-wrap: anywhere;
 	    }
-    .source {
+	    .source {
       padding: 10px 0;
       border-bottom: 1px solid var(--line);
     }
 	    .source:last-child { border-bottom: 0; }
+	    html[data-theme="bank-ledger"] {
+	      --bg: #e8d8b5;
+	      --surface: #fbf3df;
+	      --surface-alt: #f7ebcf;
+	      --surface-inset: #fff7df;
+	      --text: #241b15;
+	      --text-strong: #22201c;
+	      --muted: #746757;
+	      --border: #b9a57b;
+	      --border-strong: #6f5636;
+	      --accent: #9b7530;
+	      --accent-strong: #b08a3c;
+	      --positive: #2f6048;
+	      --negative: #763432;
+	      --warning: #9b7530;
+	      --chart-grid: #d8c79c;
+	      --button-bg: #22201c;
+	      --button-hover: #763432;
+	      --button-text: #fbf3df;
+	      --focus-ring: #b08a3c;
+	      --shadow: rgba(54, 39, 23, 0.18);
+	      --paper-frame: rgba(111, 86, 54, 0.28);
+	      --error-bg: #f7e2d4;
+	      --notes-bg: #f8edcc;
+	      --link: #2f6048;
+	      --heading-bg: #433327;
+	      --radius: 0;
+	      --panel-shadow: 0 10px 24px var(--shadow);
+	      --header-shadow: 0 10px 28px var(--shadow);
+	    }
 	    html[data-theme="wall-street-terminal"] {
 	      --bg: #090d0c;
 	      --surface: #111817;
@@ -819,6 +855,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #261817;
 	      --notes-bg: #171c17;
 	      --heading-bg: #1f332b;
+	      --radius: 2px;
 	    }
 	    html[data-theme="federal-reserve-archive"] {
 	      --bg: #dfe4e9;
@@ -845,6 +882,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #f2e2e4;
 	      --notes-bg: #f4f1e8;
 	      --heading-bg: #1f3f63;
+	      --radius: 4px;
 	    }
 	    html[data-theme="ticker-tape"] {
 	      --bg: #e4dcc9;
@@ -871,6 +909,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #efe0d8;
 	      --notes-bg: #f0ead8;
 	      --heading-bg: #2f2d28;
+	      --radius: 0;
 	    }
 	    html[data-theme="mahogany-desk"] {
 	      --bg: #23140f;
@@ -897,6 +936,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #ead2c6;
 	      --notes-bg: #ead9b8;
 	      --heading-bg: #3a1c12;
+	      --radius: 3px;
 	    }
 	    html[data-theme="blueprint-analyst"] {
 	      --bg: #081d34;
@@ -923,6 +963,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #2b252d;
 	      --notes-bg: #102f4c;
 	      --heading-bg: #17496f;
+	      --radius: 2px;
 	    }
 	    html[data-theme="monochrome-dossier"] {
 	      --bg: #d8d8d4;
@@ -949,6 +990,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #eeeeec;
 	      --notes-bg: #f2f2ef;
 	      --heading-bg: #111111;
+	      --radius: 0;
 	    }
 	    html[data-theme="green-screen-mainframe"] {
 	      --bg: #03110b;
@@ -975,6 +1017,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #1f1710;
 	      --notes-bg: #0b2114;
 	      --heading-bg: #10351f;
+	      --radius: 2px;
 	    }
 	    html[data-theme="ivory-research-lab"] {
 	      --bg: #eee9dc;
@@ -1001,6 +1044,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #f2e5df;
 	      --notes-bg: #f7f1df;
 	      --heading-bg: #33445a;
+	      --radius: 6px;
 	    }
 	    html[data-theme="crisis-room"] {
 	      --bg: #15191d;
@@ -1027,6 +1071,7 @@ const indexHTML = `<!doctype html>
 	      --error-bg: #331f20;
 	      --notes-bg: #2e2920;
 	      --heading-bg: #7d302f;
+	      --radius: 2px;
 	    }
 	    html[data-theme] {
 	      --ink: var(--text);
