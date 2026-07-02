@@ -198,29 +198,74 @@ const indexHTML = `<!doctype html>
 	  <meta name="viewport" content="width=device-width, initial-scale=1">
 	  <title>Stockbridge</title>
 	  <script>
-	    const savedTheme = localStorage.getItem("stockbridge-theme") || "oldschool";
-	    document.documentElement.dataset.theme = savedTheme;
+	    (function () {
+	      const validThemes = [
+	        "bank-ledger",
+	        "wall-street-terminal",
+	        "federal-reserve-archive",
+	        "ticker-tape",
+	        "mahogany-desk",
+	        "blueprint-analyst",
+	        "monochrome-dossier",
+	        "green-screen-mainframe",
+	        "ivory-research-lab",
+	        "crisis-room"
+	      ];
+	      const storedTheme = localStorage.getItem("stockbridge-theme");
+	      const legacyTheme = storedTheme === "oldschool" ? "bank-ledger" : (storedTheme === "modern" ? "ivory-research-lab" : storedTheme);
+	      document.documentElement.dataset.theme = validThemes.includes(legacyTheme) ? legacyTheme : "bank-ledger";
+	    })();
 	  </script>
 	  <style>
 	    @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap");
 
 	    :root {
 	      --font-main: "Fira Code", monospace;
-	      --ink: #241b15;
-	      --ink-soft: #433327;
-	      --muted: #746757;
-	      --paper: #fbf3df;
-	      --paper-deep: #f1e2bd;
-	      --panel: #f7ebcf;
 	      --bg: #e8d8b5;
-	      --line: #b9a57b;
-	      --line-dark: #6f5636;
-	      --brass: #9b7530;
-	      --gold: #b08a3c;
-	      --burgundy: #763432;
-	      --forest: #2f6048;
-	      --charcoal: #22201c;
+	      --surface: #fbf3df;
+	      --surface-alt: #f7ebcf;
+	      --surface-inset: #fff7df;
+	      --text: #241b15;
+	      --text-strong: #22201c;
+	      --muted: #746757;
+	      --border: #b9a57b;
+	      --border-strong: #6f5636;
+	      --accent: #9b7530;
+	      --accent-strong: #b08a3c;
+	      --positive: #2f6048;
+	      --negative: #763432;
+	      --warning: #9b7530;
+	      --chart-line: var(--positive);
+	      --chart-grid: #d8c79c;
+	      --button-bg: #22201c;
+	      --button-hover: #763432;
+	      --button-text: #fbf3df;
+	      --focus-ring: #b08a3c;
 	      --shadow: rgba(54, 39, 23, 0.18);
+	      --paper-frame: rgba(111, 86, 54, 0.28);
+	      --error-bg: #f7e2d4;
+	      --notes-bg: #f8edcc;
+	      --link: var(--positive);
+	      --heading-bg: #433327;
+	      --heading-text: #fbf3df;
+	      --radius: 0;
+	      --panel-shadow: 0 10px 24px var(--shadow);
+	      --header-shadow: 0 10px 28px var(--shadow);
+	      --show-stamps: block;
+	      --brand-case: uppercase;
+	      --input-case: uppercase;
+	      --ink: var(--text);
+	      --ink-soft: var(--heading-bg);
+	      --paper: var(--surface);
+	      --paper-deep: var(--surface-alt);
+	      --panel: var(--surface-alt);
+	      --line: var(--border);
+	      --line-dark: var(--border-strong);
+	      --brass: var(--accent);
+	      --gold: var(--accent-strong);
+	      --burgundy: var(--negative);
+	      --forest: var(--positive);
+	      --charcoal: var(--button-bg);
 	    }
 	    * { box-sizing: border-box; }
 	    body {
@@ -244,7 +289,7 @@ const indexHTML = `<!doctype html>
 	      padding: 22px;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
-	      box-shadow: 0 10px 28px var(--shadow);
+	      box-shadow: var(--header-shadow);
 	    }
 	    header::before,
 	    .summary::before,
@@ -254,7 +299,7 @@ const indexHTML = `<!doctype html>
 	      content: "";
 	      position: absolute;
 	      inset: 7px;
-	      border: 1px solid rgba(111, 86, 54, 0.28);
+	      border: 1px solid var(--paper-frame);
 	      pointer-events: none;
 	    }
 	    .brand {
@@ -284,7 +329,7 @@ const indexHTML = `<!doctype html>
 	      padding: 5px 12px;
 	      font-size: 22px;
 	      letter-spacing: 0.04em;
-	      text-transform: uppercase;
+	      text-transform: var(--brand-case);
 	    }
 	    .brand span {
 	      color: var(--burgundy);
@@ -328,9 +373,9 @@ const indexHTML = `<!doctype html>
 	      font-size: 18px;
 	      font-weight: 600;
 	      letter-spacing: 0.04em;
-	      text-transform: uppercase;
+	      text-transform: var(--input-case);
 	      color: var(--ink);
-	      background: #fff7df;
+	      background: var(--surface-inset);
 	      box-shadow: inset 0 1px 3px rgba(54, 39, 23, 0.16);
 	    }
 	    button {
@@ -347,7 +392,13 @@ const indexHTML = `<!doctype html>
 	      cursor: pointer;
 	    }
 	    button:hover {
-	      background: var(--burgundy);
+	      background: var(--button-hover);
+	    }
+	    button:focus-visible,
+	    input[type="search"]:focus-visible,
+	    a:focus-visible {
+	      outline: 2px solid var(--focus-ring);
+	      outline-offset: 2px;
 	    }
 	    .theme-toggle {
 	      width: 116px;
@@ -377,7 +428,9 @@ const indexHTML = `<!doctype html>
 	      right: 0;
 	      z-index: 20;
 	      display: none;
-	      width: 240px;
+	      width: 310px;
+	      max-height: min(520px, calc(100vh - 120px));
+	      overflow-y: auto;
 	      padding: 10px;
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
@@ -490,7 +543,7 @@ const indexHTML = `<!doctype html>
 	    .error {
 	      border: 1px solid var(--burgundy);
 	      border-left-width: 6px;
-	      background: #f7e2d4;
+	      background: var(--error-bg);
 	      color: var(--burgundy);
 	      padding: 14px 16px;
 	      margin: 18px 0;
@@ -513,7 +566,7 @@ const indexHTML = `<!doctype html>
 	      background: var(--paper);
 	      border: 1px solid var(--line-dark);
 	      padding: 22px;
-	      box-shadow: 0 10px 24px var(--shadow);
+	      box-shadow: var(--panel-shadow);
 	    }
 	    h1, h2 {
 	      margin: 0;
@@ -686,7 +739,7 @@ const indexHTML = `<!doctype html>
 	      position: relative;
 	      width: 100%;
 	      min-height: 330px;
-	      background: #fff7df;
+	      background: var(--surface-inset);
 	      border: 1px solid var(--line);
 	      overflow: hidden;
 	      box-shadow: inset 0 0 0 1px rgba(111, 86, 54, 0.14);
@@ -697,7 +750,7 @@ const indexHTML = `<!doctype html>
       height: 330px;
     }
 	    .chart-grid {
-	      stroke: #d8c79c;
+	      stroke: var(--chart-grid);
 	      stroke-width: 1;
 	    }
     .chart-axis-label {
@@ -725,7 +778,7 @@ const indexHTML = `<!doctype html>
     }
 	    .notes {
 	      border-color: var(--brass);
-	      background: #f8edcc;
+	      background: var(--notes-bg);
 	    }
     ul {
       margin: 0;
@@ -733,7 +786,7 @@ const indexHTML = `<!doctype html>
     }
     li { margin: 8px 0; }
 	    .sources a {
-	      color: var(--forest);
+	      color: var(--link);
 	      overflow-wrap: anywhere;
 	    }
     .source {
@@ -741,255 +794,263 @@ const indexHTML = `<!doctype html>
       border-bottom: 1px solid var(--line);
     }
 	    .source:last-child { border-bottom: 0; }
-	    html[data-theme="modern"] {
-	      --ink: #18202f;
-	      --ink-soft: #303747;
-	      --muted: #657187;
-	      --panel: #f7f8fb;
-	      --line: #d9deea;
-	      --line-dark: #d9deea;
-	      --paper: #ffffff;
-	      --bg: #eef2f7;
-	      --forest: #138a5b;
-	      --brass: #a96700;
-	      --burgundy: #b64242;
-	      --charcoal: #1455d9;
-	      --gold: #008fb3;
-	      --shadow: rgba(24, 32, 47, 0.08);
+	    html[data-theme="wall-street-terminal"] {
+	      --bg: #090d0c;
+	      --surface: #111817;
+	      --surface-alt: #17211f;
+	      --surface-inset: #0c1211;
+	      --text: #e8efe4;
+	      --text-strong: #f4f0dc;
+	      --muted: #94a69a;
+	      --border: #2f453c;
+	      --border-strong: #516758;
+	      --accent: #b08a4a;
+	      --accent-strong: #d0aa5b;
+	      --positive: #68a878;
+	      --negative: #b36a5e;
+	      --warning: #c89a4c;
+	      --chart-grid: #24362f;
+	      --button-bg: #1f332b;
+	      --button-hover: #2e523f;
+	      --button-text: #f1efd8;
+	      --focus-ring: #d0aa5b;
+	      --shadow: rgba(0, 0, 0, 0.42);
+	      --paper-frame: rgba(104, 168, 120, 0.22);
+	      --error-bg: #261817;
+	      --notes-bg: #171c17;
+	      --heading-bg: #1f332b;
 	    }
-	    html[data-theme="modern"] body {
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	      font-size: 16px;
-	      background: var(--bg);
+	    html[data-theme="federal-reserve-archive"] {
+	      --bg: #dfe4e9;
+	      --surface: #f7f8f6;
+	      --surface-alt: #eceff1;
+	      --surface-inset: #ffffff;
+	      --text: #15253a;
+	      --text-strong: #0c1f35;
+	      --muted: #657384;
+	      --border: #b7c0c9;
+	      --border-strong: #65778b;
+	      --accent: #3f678f;
+	      --accent-strong: #244b73;
+	      --positive: #2f6f5d;
+	      --negative: #8a3d4b;
+	      --warning: #8f6a33;
+	      --chart-grid: #c8d1da;
+	      --button-bg: #1f3f63;
+	      --button-hover: #2e5d88;
+	      --button-text: #f7f8f6;
+	      --focus-ring: #507aa5;
+	      --shadow: rgba(27, 45, 69, 0.14);
+	      --paper-frame: rgba(31, 63, 99, 0.16);
+	      --error-bg: #f2e2e4;
+	      --notes-bg: #f4f1e8;
+	      --heading-bg: #1f3f63;
 	    }
-	    html[data-theme="modern"] .shell {
-	      padding: 28px 20px 44px;
+	    html[data-theme="ticker-tape"] {
+	      --bg: #e4dcc9;
+	      --surface: #f6f0df;
+	      --surface-alt: #ebe3cf;
+	      --surface-inset: #fbf7e9;
+	      --text: #1f1f1b;
+	      --text-strong: #11110f;
+	      --muted: #6c685e;
+	      --border: #beb29a;
+	      --border-strong: #6f695c;
+	      --accent: #7c7464;
+	      --accent-strong: #35322d;
+	      --positive: #4f7854;
+	      --negative: #9a4a42;
+	      --warning: #9a7442;
+	      --chart-grid: #d1c7ae;
+	      --button-bg: #2f2d28;
+	      --button-hover: #5b574b;
+	      --button-text: #f6f0df;
+	      --focus-ring: #9a4a42;
+	      --shadow: rgba(33, 29, 22, 0.12);
+	      --paper-frame: rgba(31, 31, 27, 0.18);
+	      --error-bg: #efe0d8;
+	      --notes-bg: #f0ead8;
+	      --heading-bg: #2f2d28;
 	    }
-	    html[data-theme="modern"] header,
-	    html[data-theme="modern"] .summary,
-	    html[data-theme="modern"] .chart-panel,
-	    html[data-theme="modern"] .notes,
-	    html[data-theme="modern"] .sources,
-	    html[data-theme="modern"] .empty {
-	      border: 1px solid var(--line);
-	      border-radius: 8px;
-	      box-shadow: none;
+	    html[data-theme="mahogany-desk"] {
+	      --bg: #23140f;
+	      --surface: #f3e5c8;
+	      --surface-alt: #e3cda7;
+	      --surface-inset: #fff0cf;
+	      --text: #2a160e;
+	      --text-strong: #1a0d08;
+	      --muted: #725d48;
+	      --border: #9b7445;
+	      --border-strong: #4b2819;
+	      --accent: #b08a43;
+	      --accent-strong: #d0a750;
+	      --positive: #416a4f;
+	      --negative: #792f2e;
+	      --warning: #a87932;
+	      --chart-grid: #c7a978;
+	      --button-bg: #3a1c12;
+	      --button-hover: #682e22;
+	      --button-text: #f3e5c8;
+	      --focus-ring: #d0a750;
+	      --shadow: rgba(15, 7, 4, 0.34);
+	      --paper-frame: rgba(75, 40, 25, 0.28);
+	      --error-bg: #ead2c6;
+	      --notes-bg: #ead9b8;
+	      --heading-bg: #3a1c12;
 	    }
-	    html[data-theme="modern"] header {
-	      padding: 0;
-	      background: transparent;
-	      border: 0;
-	      gap: 18px;
-	      margin-bottom: 24px;
+	    html[data-theme="blueprint-analyst"] {
+	      --bg: #081d34;
+	      --surface: #0f2b48;
+	      --surface-alt: #163a5d;
+	      --surface-inset: #09243e;
+	      --text: #e1eef6;
+	      --text-strong: #f3fbff;
+	      --muted: #9bb5c9;
+	      --border: #4b7191;
+	      --border-strong: #8db6d1;
+	      --accent: #7db7ce;
+	      --accent-strong: #b4d7e7;
+	      --positive: #7fb99a;
+	      --negative: #d08b83;
+	      --warning: #d0b06b;
+	      --chart-grid: #2f5472;
+	      --button-bg: #17496f;
+	      --button-hover: #1f638e;
+	      --button-text: #f3fbff;
+	      --focus-ring: #b4d7e7;
+	      --shadow: rgba(0, 10, 22, 0.38);
+	      --paper-frame: rgba(180, 215, 231, 0.22);
+	      --error-bg: #2b252d;
+	      --notes-bg: #102f4c;
+	      --heading-bg: #17496f;
 	    }
-	    html[data-theme="modern"] header::before,
-	    html[data-theme="modern"] .summary::before,
-	    html[data-theme="modern"] .chart-panel::before,
-	    html[data-theme="modern"] .notes::before,
-	    html[data-theme="modern"] .sources::before {
-	      display: none;
+	    html[data-theme="monochrome-dossier"] {
+	      --bg: #d8d8d4;
+	      --surface: #fbfbf8;
+	      --surface-alt: #ececea;
+	      --surface-inset: #ffffff;
+	      --text: #111111;
+	      --text-strong: #000000;
+	      --muted: #666666;
+	      --border: #b9b9b5;
+	      --border-strong: #3b3b3b;
+	      --accent: #555555;
+	      --accent-strong: #222222;
+	      --positive: #2f2f2f;
+	      --negative: #111111;
+	      --warning: #5c5c5c;
+	      --chart-grid: #d0d0cc;
+	      --button-bg: #111111;
+	      --button-hover: #333333;
+	      --button-text: #fbfbf8;
+	      --focus-ring: #000000;
+	      --shadow: rgba(0, 0, 0, 0.12);
+	      --paper-frame: rgba(0, 0, 0, 0.16);
+	      --error-bg: #eeeeec;
+	      --notes-bg: #f2f2ef;
+	      --heading-bg: #111111;
 	    }
-	    html[data-theme="modern"] .brand {
-	      border-bottom: 0;
-	      padding-bottom: 0;
+	    html[data-theme="green-screen-mainframe"] {
+	      --bg: #03110b;
+	      --surface: #071b12;
+	      --surface-alt: #0b2719;
+	      --surface-inset: #04150d;
+	      --text: #bde7bd;
+	      --text-strong: #d8ffd1;
+	      --muted: #79a978;
+	      --border: #245c35;
+	      --border-strong: #63a86d;
+	      --accent: #97c15b;
+	      --accent-strong: #d0b55f;
+	      --positive: #79d07e;
+	      --negative: #c6805f;
+	      --warning: #d0b55f;
+	      --chart-grid: #174429;
+	      --button-bg: #10351f;
+	      --button-hover: #1a5732;
+	      --button-text: #d8ffd1;
+	      --focus-ring: #97c15b;
+	      --shadow: rgba(0, 0, 0, 0.48);
+	      --paper-frame: rgba(121, 208, 126, 0.22);
+	      --error-bg: #1f1710;
+	      --notes-bg: #0b2114;
+	      --heading-bg: #10351f;
 	    }
-	    html[data-theme="modern"] .brand strong {
-	      background: #1455d9;
-	      color: white;
-	      border: 0;
-	      border-radius: 6px;
-	      letter-spacing: 0;
-	      text-transform: none;
+	    html[data-theme="ivory-research-lab"] {
+	      --bg: #eee9dc;
+	      --surface: #fffdf4;
+	      --surface-alt: #f4f0e4;
+	      --surface-inset: #ffffff;
+	      --text: #20242a;
+	      --text-strong: #111827;
+	      --muted: #6d7278;
+	      --border: #d1c9b8;
+	      --border-strong: #817866;
+	      --accent: #7b8796;
+	      --accent-strong: #33445a;
+	      --positive: #52715c;
+	      --negative: #954f4b;
+	      --warning: #9b7b45;
+	      --chart-grid: #ddd6c7;
+	      --button-bg: #33445a;
+	      --button-hover: #465d78;
+	      --button-text: #fffdf4;
+	      --focus-ring: #7b8796;
+	      --shadow: rgba(32, 36, 42, 0.1);
+	      --paper-frame: rgba(51, 68, 90, 0.13);
+	      --error-bg: #f2e5df;
+	      --notes-bg: #f7f1df;
+	      --heading-bg: #33445a;
 	    }
-	    html[data-theme="modern"] .brand span {
-	      color: #6f5bb5;
-	      letter-spacing: 0;
-	      text-transform: none;
-	      font-size: 16px;
+	    html[data-theme="crisis-room"] {
+	      --bg: #15191d;
+	      --surface: #20262c;
+	      --surface-alt: #2b333a;
+	      --surface-inset: #171d22;
+	      --text: #f0ede6;
+	      --text-strong: #fff8ec;
+	      --muted: #aeb7bd;
+	      --border: #4c5962;
+	      --border-strong: #7a858c;
+	      --accent: #d19a48;
+	      --accent-strong: #e2b661;
+	      --positive: #6ea36f;
+	      --negative: #c15b55;
+	      --warning: #d19a48;
+	      --chart-grid: #39434b;
+	      --button-bg: #7d302f;
+	      --button-hover: #9d403c;
+	      --button-text: #fff8ec;
+	      --focus-ring: #e2b661;
+	      --shadow: rgba(0, 0, 0, 0.36);
+	      --paper-frame: rgba(209, 154, 72, 0.18);
+	      --error-bg: #331f20;
+	      --notes-bg: #2e2920;
+	      --heading-bg: #7d302f;
 	    }
-	    html[data-theme="modern"] .deskline,
-	    html[data-theme="modern"] .form-label,
-	    html[data-theme="modern"] .dossier-label {
-	      display: none;
-	    }
-	    html[data-theme="modern"] form {
-	      max-width: 560px;
-	      padding: 0;
-	      background: transparent;
-	      border: 0;
-	      box-shadow: none;
-	      flex-wrap: nowrap;
-	    }
-	    html[data-theme="modern"] input[type="search"] {
-	      width: 100%;
-	      min-height: 46px;
-	      border: 1px solid var(--line);
-	      border-radius: 6px;
-	      background: white;
-	      box-shadow: none;
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	      font-size: 18px;
-	      font-weight: 400;
-	      letter-spacing: 0;
-	      text-transform: none;
-	    }
-	    html[data-theme="modern"] button {
-	      border: 0;
-	      border-radius: 6px;
-	      background: #1455d9;
-	      color: white;
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	      letter-spacing: 0;
-	      text-transform: none;
-	    }
-	    html[data-theme="modern"] button:hover {
-	      background: #0f45b0;
-	    }
-	    html[data-theme="modern"] .theme-menu {
-	      background: white;
-	      border: 1px solid var(--line);
-	      border-radius: 8px;
-	      box-shadow: 0 14px 32px rgba(24, 32, 47, 0.12);
-	    }
-	    html[data-theme="modern"] .theme-option {
-	      background: var(--panel);
-	      border: 1px solid var(--line);
-	      border-radius: 6px;
-	      color: var(--ink);
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	    }
-	    html[data-theme="modern"] .theme-option:hover,
-	    html[data-theme="modern"] .theme-option.active {
-	      background: #1455d9;
-	      border-color: #1455d9;
-	      color: white;
-	    }
-	    html[data-theme="modern"] .watchlist-panel {
-	      background: white;
-	      border: 1px solid var(--line);
-	      border-radius: 8px;
-	      box-shadow: 0 14px 32px rgba(24, 32, 47, 0.12);
-	    }
-	    html[data-theme="modern"] .watchlist-link,
-	    html[data-theme="modern"] .watchlist-remove {
-	      border-radius: 6px;
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	      letter-spacing: 0;
-	      text-transform: none;
-	    }
-	    html[data-theme="modern"] .watchlist-link {
-	      background: var(--panel);
-	      border: 1px solid var(--line);
-	      color: var(--ink);
-	    }
-	    html[data-theme="modern"] .watchlist-link:hover,
-	    html[data-theme="modern"] .watchlist-link:focus {
-	      background: #1455d9;
-	      border-color: #1455d9;
-	      color: white;
-	    }
-	    html[data-theme="modern"] .watchlist-remove {
-	      background: white;
-	      border: 1px solid var(--line);
-	      color: #b64242;
-	    }
-	    html[data-theme="modern"] .watchlist-remove:hover,
-	    html[data-theme="modern"] .watchlist-remove:focus {
-	      background: #b64242;
-	      border-color: #b64242;
-	      color: white;
-	    }
-	    html[data-theme="modern"] h1 {
-	      color: #008fb3;
-	      font-size: 26px;
-	      letter-spacing: 0;
-	      text-transform: none;
-	    }
-	    html[data-theme="modern"] .watchlist-star {
-	      border: 1px solid var(--line);
-	      border-radius: 6px;
-	      background: white;
-	      color: var(--line);
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	    }
-	    html[data-theme="modern"] .watchlist-star:hover,
-	    html[data-theme="modern"] .watchlist-star.active {
-	      background: var(--panel);
-	      border-color: #138a5b;
-	      color: #138a5b;
-	    }
-	    html[data-theme="modern"] h2 {
-	      color: white;
-	      background: #303747;
-	      border: 0;
-	      border-bottom: 3px solid #008fb3;
-	      border-radius: 4px 4px 0 0;
-	      font-size: 15px;
-	      letter-spacing: 0;
-	    }
-	    html[data-theme="modern"] .meta div,
-	    html[data-theme="modern"] .range-tab {
-	      background: var(--panel);
-	      border: 1px solid var(--line);
-	      border-radius: 6px;
-	    }
-	    html[data-theme="modern"] .metrics {
-	      border: 1px solid var(--line);
-	      border-radius: 8px;
-	      box-shadow: none;
-	    }
-	    html[data-theme="modern"] .metric-value {
-	      color: #008fb3;
-	    }
-	    html[data-theme="modern"] .metric-value.positive,
-	    html[data-theme="modern"] .chart-change {
-	      color: #138a5b;
-	    }
-	    html[data-theme="modern"] .metric-value.caution {
-	      color: #a96700;
-	    }
-	    html[data-theme="modern"] .chart-change.down {
-	      color: #b64242;
-	    }
-	    html[data-theme="modern"] .range-tab {
-	      border-radius: 999px;
-	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	      letter-spacing: 0;
-	    }
-	    html[data-theme="modern"] .range-tab.active {
-	      background: #1455d9;
-	      border-color: #1455d9;
-	      color: white;
-	    }
-	    html[data-theme="modern"] .chart-wrap {
-	      background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-	      border: 1px solid var(--line);
-	      border-radius: 8px;
-	      box-shadow: none;
-	    }
-	    html[data-theme="modern"] .chart-grid {
-	      stroke: #e4e9f2;
-	    }
-	    html[data-theme="modern"] .chart-dot {
-	      stroke: white;
-	    }
-	    html[data-theme="modern"] .notes {
-	      border-color: #e7c576;
-	      background: #fffaf0;
-	    }
-	    html[data-theme="modern"] .sources a {
-	      color: #1455d9;
+	    html[data-theme] {
+	      --ink: var(--text);
+	      --ink-soft: var(--heading-bg);
+	      --paper: var(--surface);
+	      --paper-deep: var(--surface-alt);
+	      --panel: var(--surface-alt);
+	      --line: var(--border);
+	      --line-dark: var(--border-strong);
+	      --brass: var(--accent);
+	      --gold: var(--accent-strong);
+	      --burgundy: var(--negative);
+	      --forest: var(--positive);
+	      --charcoal: var(--button-bg);
 	    }
 	    @media (max-width: 720px) {
 	      form { flex-direction: column; }
-	      html[data-theme="modern"] form { flex-direction: column; }
 	      button { width: 100%; }
 	      .theme-toggle { width: 116px; }
 	      .header-actions { flex-wrap: wrap; justify-content: flex-end; }
 	      .watchlist-toggle { width: 132px; }
 	      .watchlist-remove { width: 38px; }
 	      .watchlist-panel { right: 0; width: min(310px, calc(100vw - 40px)); }
-	      .theme-menu { right: 0; width: min(240px, calc(100vw - 40px)); }
+	      .theme-menu { right: 0; width: min(310px, calc(100vw - 40px)); }
 	      .metrics { display: block; overflow-x: auto; }
 	    }
   </style>
@@ -1014,12 +1075,44 @@ const indexHTML = `<!doctype html>
 	            <button id="theme-toggle" class="theme-toggle" type="button" aria-haspopup="menu" aria-expanded="false">Theme</button>
 	            <div id="theme-menu" class="theme-menu" role="menu" aria-label="Theme options">
 	              <div class="theme-menu-title">Choose theme</div>
-	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="true" data-theme-choice="oldschool">
-	                <span>Old School</span>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="true" data-theme-choice="bank-ledger">
+	                <span>Bank Ledger</span>
 	                <span class="theme-option-check">Selected</span>
 	              </button>
-	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="modern">
-	                <span>Original</span>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="wall-street-terminal">
+	                <span>Wall Street Terminal</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="federal-reserve-archive">
+	                <span>Federal Reserve Archive</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="ticker-tape">
+	                <span>Ticker Tape</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="mahogany-desk">
+	                <span>Mahogany Desk</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="blueprint-analyst">
+	                <span>Blueprint Analyst</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="monochrome-dossier">
+	                <span>Monochrome Dossier</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="green-screen-mainframe">
+	                <span>Green Screen Mainframe</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="ivory-research-lab">
+	                <span>Ivory Research Lab</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="crisis-room">
+	                <span>Crisis Room</span>
 	                <span class="theme-option-check">Selected</span>
 	              </button>
 	            </div>
@@ -1129,6 +1222,18 @@ const indexHTML = `<!doctype html>
       const button = document.getElementById("theme-toggle");
       const menu = document.getElementById("theme-menu");
       const options = Array.from(document.querySelectorAll("[data-theme-choice]"));
+      const themes = [
+        { key: "bank-ledger", label: "Bank Ledger" },
+        { key: "wall-street-terminal", label: "Wall Street Terminal" },
+        { key: "federal-reserve-archive", label: "Federal Reserve Archive" },
+        { key: "ticker-tape", label: "Ticker Tape" },
+        { key: "mahogany-desk", label: "Mahogany Desk" },
+        { key: "blueprint-analyst", label: "Blueprint Analyst" },
+        { key: "monochrome-dossier", label: "Monochrome Dossier" },
+        { key: "green-screen-mainframe", label: "Green Screen Mainframe" },
+        { key: "ivory-research-lab", label: "Ivory Research Lab" },
+        { key: "crisis-room", label: "Crisis Room" }
+      ];
       const starButton = document.getElementById("watchlist-star");
       const watchlistButton = document.getElementById("watchlist-toggle");
       const watchlistPanel = document.getElementById("watchlist-panel");
@@ -1136,6 +1241,66 @@ const indexHTML = `<!doctype html>
       const searchForm = document.querySelector('form[action="/"]');
       const tickerInput = document.getElementById("ticker-input");
       const watchlistStorageKey = "stockbridge-watchlist";
+      const themeStorageKey = "stockbridge-theme";
+
+      function normalizeTheme(theme) {
+        if (theme === "oldschool") return "bank-ledger";
+        if (theme === "modern") return "ivory-research-lab";
+        return String(theme || "").trim();
+      }
+
+      function isValidTheme(theme) {
+        const normalizedTheme = normalizeTheme(theme);
+        return themes.some(function (entry) { return entry.key === normalizedTheme; });
+      }
+
+      function getThemeLabel(theme) {
+        const normalizedTheme = normalizeTheme(theme);
+        const match = themes.find(function (entry) { return entry.key === normalizedTheme; });
+        return match ? match.label : "Bank Ledger";
+      }
+
+      function getStoredTheme() {
+        try {
+          const storedTheme = normalizeTheme(localStorage.getItem(themeStorageKey));
+          return isValidTheme(storedTheme) ? storedTheme : "bank-ledger";
+        } catch (error) {
+          return "bank-ledger";
+        }
+      }
+
+      function saveTheme(theme) {
+        const normalizedTheme = normalizeTheme(theme);
+        if (!isValidTheme(normalizedTheme)) return;
+        try {
+          localStorage.setItem(themeStorageKey, normalizedTheme);
+        } catch (error) {
+          return;
+        }
+      }
+
+      function applyTheme(theme) {
+        const normalizedTheme = isValidTheme(theme) ? normalizeTheme(theme) : "bank-ledger";
+        root.dataset.theme = normalizedTheme;
+        if (button) {
+          button.textContent = "Theme";
+          button.setAttribute("aria-label", "Open theme menu. Current theme: " + getThemeLabel(normalizedTheme));
+        }
+        options.forEach(function (option) {
+          const selected = option.dataset.themeChoice === normalizedTheme;
+          option.classList.toggle("active", selected);
+          option.setAttribute("aria-checked", selected ? "true" : "false");
+        });
+        if (window.renderChart && window.currentChartPeriod) {
+          window.renderChart(window.currentChartPeriod);
+        }
+      }
+
+      function initializeTheme() {
+        const initialTheme = isValidTheme(root.dataset.theme) ? normalizeTheme(root.dataset.theme) : getStoredTheme();
+        applyTheme(initialTheme);
+        saveTheme(initialTheme);
+      }
 
       function getWatchlist() {
         try {
@@ -1250,23 +1415,6 @@ const indexHTML = `<!doctype html>
         });
       }
 
-      function setTheme(theme) {
-        root.dataset.theme = theme;
-        localStorage.setItem("stockbridge-theme", theme);
-        if (button) {
-          button.textContent = "Theme";
-          button.setAttribute("aria-label", "Open theme menu");
-        }
-        options.forEach(function (option) {
-          const selected = option.dataset.themeChoice === theme;
-          option.classList.toggle("active", selected);
-          option.setAttribute("aria-checked", selected ? "true" : "false");
-        });
-        if (window.renderChart && window.currentChartPeriod) {
-          window.renderChart(window.currentChartPeriod);
-        }
-      }
-
       function setMenuOpen(open) {
         if (!button || !menu) return;
         menu.classList.toggle("open", open);
@@ -1280,7 +1428,7 @@ const indexHTML = `<!doctype html>
         watchlistButton.setAttribute("aria-expanded", open ? "true" : "false");
       }
 
-      setTheme(root.dataset.theme || "oldschool");
+      initializeTheme();
       if (button && menu) {
         button.addEventListener("click", function () {
           setMenuOpen(!menu.classList.contains("open"));
@@ -1288,7 +1436,8 @@ const indexHTML = `<!doctype html>
         });
         options.forEach(function (option) {
           option.addEventListener("click", function () {
-            setTheme(option.dataset.themeChoice);
+            applyTheme(option.dataset.themeChoice);
+            saveTheme(option.dataset.themeChoice);
             setMenuOpen(false);
           });
         });
@@ -1368,8 +1517,8 @@ const indexHTML = `<!doctype html>
       const max = Math.max(...closes);
       const range = Math.max(max - min, 1);
 	      const styles = getComputedStyle(document.documentElement);
-	      const upColor = styles.getPropertyValue("--forest").trim() || "#2f6048";
-	      const downColor = styles.getPropertyValue("--burgundy").trim() || "#763432";
+	      const upColor = styles.getPropertyValue("--positive").trim() || styles.getPropertyValue("--forest").trim() || "#2f6048";
+	      const downColor = styles.getPropertyValue("--negative").trim() || styles.getPropertyValue("--burgundy").trim() || "#763432";
 	      const lineColor = period.change >= 0 ? upColor : downColor;
       const mapped = period.points.map((point, index) => ({
         x: pad.left + (index / Math.max(period.points.length - 1, 1)) * plotW,
