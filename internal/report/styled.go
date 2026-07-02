@@ -40,10 +40,11 @@ func RenderStyled(summary analysis.Summary) string {
 		Foreground(lipgloss.Color(colorCyan)).
 		Render(fmt.Sprintf("%s (%s)", summary.CompanyName, summary.Ticker))
 
-	meta := []string{
-		labelValue("CIK", fmt.Sprintf("%010d", summary.CIK)),
-		labelValue("Exchange", summary.Listing.Exchange),
+	meta := []string{}
+	if summary.CIK != 0 {
+		meta = append(meta, labelValue("CIK", fmt.Sprintf("%010d", summary.CIK)))
 	}
+	meta = append(meta, labelValue("Exchange", summary.Listing.Exchange))
 	if summary.Listing.Market != "" && summary.Listing.Market != summary.Listing.Exchange {
 		meta = append(meta, labelValue("Market", summary.Listing.Market))
 	}

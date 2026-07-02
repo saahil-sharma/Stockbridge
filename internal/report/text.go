@@ -13,7 +13,9 @@ func RenderText(summary analysis.Summary) string {
 	fmt.Fprintf(&b, "Stockbridge Fundamental Snapshot\n")
 	fmt.Fprintf(&b, "================================\n\n")
 	fmt.Fprintf(&b, "%s (%s)\n", summary.CompanyName, summary.Ticker)
-	fmt.Fprintf(&b, "CIK: %010d\n", summary.CIK)
+	if summary.CIK != 0 {
+		fmt.Fprintf(&b, "CIK: %010d\n", summary.CIK)
+	}
 	fmt.Fprintf(&b, "Exchange: %s\n", summary.Listing.Exchange)
 	if summary.Listing.Market != "" && summary.Listing.Market != summary.Listing.Exchange {
 		fmt.Fprintf(&b, "Market: %s\n", summary.Listing.Market)

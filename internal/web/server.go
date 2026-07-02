@@ -1190,7 +1190,7 @@ const indexHTML = `<!doctype html>
 	            <button id="watchlist-star" class="watchlist-star" type="button" data-ticker="{{.Report.Ticker}}" aria-label="Add {{.Report.Ticker}} to watchlist">☆</button>
 	          </div>
           <div class="meta">
-            <div><span class="label">CIK</span>{{printf "%010d" .Report.CIK}}</div>
+            {{if .Report.CIK}}<div><span class="label">CIK</span>{{printf "%010d" .Report.CIK}}</div>{{end}}
             <div><span class="label">Exchange</span>{{.Report.Listing.Exchange}}</div>
             {{if .Report.Listing.Market}}<div><span class="label">Market</span>{{.Report.Listing.Market}}</div>{{end}}
             <div><span class="label">Security</span>{{.Report.Listing.SecurityName}}</div>
@@ -1211,6 +1211,7 @@ const indexHTML = `<!doctype html>
               </tr>
             </thead>
             <tbody>
+              {{if .Report.Metrics}}
               {{range .Report.Metrics}}
                 <tr>
                   <td class="metric-name">{{.Name}}</td>
@@ -1218,6 +1219,11 @@ const indexHTML = `<!doctype html>
                   <td class="metric-detail">{{.Period}}</td>
                   <td class="metric-detail">{{.Form}} {{if .Filed}}filed {{.Filed}}{{end}}</td>
                   <td class="metric-detail">{{.Concept}}</td>
+                </tr>
+              {{end}}
+              {{else}}
+                <tr>
+                  <td class="metric-detail" colspan="5">No standardized SEC fundamentals are available for this ticker in the current data source.</td>
                 </tr>
               {{end}}
             </tbody>

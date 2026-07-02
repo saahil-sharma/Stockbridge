@@ -45,9 +45,15 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 func (c *Client) Lookup(ctx context.Context, ticker string) (Listing, error) {
-	nasdaqListing, found, err := c.lookupNasdaqListed(ctx, ticker)
+	ticker, err := NormalizeTicker(ticker)
 	if err != nil {
 		return Listing{}, err
+	}
+	var lookupErrs []error
+
+	nasdaqListing, found, err := c.lookupNasdaqListed(ctx, ticker)
+	if err != nil {
+		lookupErrs = append(lookupErrs, err)
 	}
 	if found {
 		return nasdaqListing, nil
@@ -55,13 +61,20 @@ func (c *Client) Lookup(ctx context.Context, ticker string) (Listing, error) {
 
 	otherListing, found, err := c.lookupOtherListed(ctx, ticker)
 	if err != nil {
-		return Listing{}, err
+		lookupErrs = append(lookupErrs, err)
 	}
 	if found {
 		return otherListing, nil
 	}
 
-	return Listing{}, fmt.Errorf("%s was not found in Nasdaq Trader listed symbol directories", ticker)
+	if listing, found := CuratedFallbackListing(ticker); found {
+		return listing, nil
+	}
+
+	if len(lookupErrs) > 0 {
+		return Listing{}, fmt.Errorf("%s was not found in the local fallback symbol universe after live symbol directory lookup failed: %v", ticker, lookupErrs[0])
+	}
+	return Listing{}, fmt.Errorf("Ticker not found in the current Stockbridge symbol universe.")
 }
 
 func (c *Client) lookupNasdaqListed(ctx context.Context, ticker string) (Listing, bool, error) {
@@ -77,7 +90,7 @@ func (c *Client) lookupNasdaqListed(ctx context.Context, ticker string) (Listing
 	}
 
 	for _, listing := range listings {
-		if listing.Symbol == ticker {
+		if EquivalentTickers(listing.Symbol, ticker) {
 			if listing.TestIssue {
 				return Listing{}, false, fmt.Errorf("%s is marked as a test issue in the Nasdaq-listed symbol directory", ticker)
 			}
@@ -102,7 +115,7 @@ func (c *Client) lookupOtherListed(ctx context.Context, ticker string) (Listing,
 	}
 
 	for _, listing := range listings {
-		if listing.Symbol == ticker {
+		if EquivalentTickers(listing.Symbol, ticker) {
 			if listing.TestIssue {
 				return Listing{}, false, fmt.Errorf("%s is marked as a test issue in the other-listed symbol directory", ticker)
 			}

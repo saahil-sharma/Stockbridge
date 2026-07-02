@@ -60,12 +60,22 @@ func (c *Client) LookupCompany(ctx context.Context, ticker string) (Company, err
 	}
 
 	for _, company := range companies {
-		if strings.EqualFold(company.Ticker, ticker) {
+		if equivalentTickers(company.Ticker, ticker) {
 			return company, nil
 		}
 	}
 
 	return Company{}, fmt.Errorf("%s was not found in SEC company_tickers.json", ticker)
+}
+
+func equivalentTickers(left, right string) bool {
+	return canonicalTicker(left) == canonicalTicker(right)
+}
+
+func canonicalTicker(input string) string {
+	ticker := strings.ToUpper(strings.TrimSpace(input))
+	ticker = strings.ReplaceAll(ticker, "-", ".")
+	return ticker
 }
 
 func (c *Client) CompanyFacts(ctx context.Context, cik int) (CompanyFacts, error) {

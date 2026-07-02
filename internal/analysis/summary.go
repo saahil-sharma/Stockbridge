@@ -63,6 +63,41 @@ func BuildSummary(listing symbols.Listing, company sec.Company, facts sec.Compan
 	return summary
 }
 
+func BuildAvailabilitySummary(listing symbols.Listing, ticker string, company *sec.Company, reason string) Summary {
+	companyName := listing.SecurityName
+	cik := 0
+	sources := []Source{
+		{Name: "Symbol universe", URL: listing.SourceURL, RetrievedAt: listing.RetrievedAt.Format("2006-01-02 15:04:05 MST")},
+	}
+	if company != nil {
+		companyName = firstNonEmpty(company.Title, companyName)
+		ticker = firstNonEmpty(company.Ticker, ticker)
+		cik = company.CIK
+		sources = append(sources, Source{Name: "SEC company tickers", URL: company.SourceURL, RetrievedAt: company.RetrievedAt.Format("2006-01-02 15:04:05 MST")})
+	}
+	ticker = strings.ToUpper(strings.TrimSpace(ticker))
+
+	note := "Stockbridge recognizes " + ticker + " as " + companyName + ", but standardized SEC fundamentals are not available in the current local dataset."
+	if reason != "" {
+		note += " Details: " + reason
+	}
+	note += " Try another ticker or update the fundamentals data source."
+
+	return Summary{
+		CompanyName: companyName,
+		Ticker:      ticker,
+		CIK:         cik,
+		Listing:     listing,
+		Sources:     sources,
+		Notes: []string{
+			note,
+			"Report uses public listing and SEC XBRL company-facts data only.",
+			"Historical price charts are available when market price data is available for this ticker.",
+			"This output is informational and is not personalized financial advice.",
+		},
+	}
+}
+
 func AddPERatio(summary *Summary, facts sec.CompanyFacts, latestPrice market.LatestPrice) bool {
 	if summary == nil || latestPrice.Price <= 0 {
 		return false

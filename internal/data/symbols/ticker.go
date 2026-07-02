@@ -18,3 +18,46 @@ func NormalizeTicker(input string) (string, error) {
 	}
 	return ticker, nil
 }
+
+func EquivalentTickers(left, right string) bool {
+	left = canonicalTicker(left)
+	right = canonicalTicker(right)
+	return left != "" && left == right
+}
+
+func TickerVariants(input string) []string {
+	normalized, err := NormalizeTicker(input)
+	if err != nil {
+		return nil
+	}
+	variants := []string{normalized}
+	if strings.Contains(normalized, ".") {
+		variants = append(variants, strings.ReplaceAll(normalized, ".", "-"))
+	}
+	if strings.Contains(normalized, "-") {
+		variants = append(variants, strings.ReplaceAll(normalized, "-", "."))
+	}
+	return uniqueStrings(variants)
+}
+
+func canonicalTicker(input string) string {
+	ticker := strings.ToUpper(strings.TrimSpace(input))
+	ticker = strings.ReplaceAll(ticker, "-", ".")
+	return ticker
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]struct{}{}
+	unique := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		unique = append(unique, value)
+	}
+	return unique
+}
