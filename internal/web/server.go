@@ -271,6 +271,12 @@ const indexHTML = `<!doctype html>
 	      align-items: flex-start;
 	      gap: 16px;
 	    }
+	    .header-actions {
+	      display: flex;
+	      align-items: flex-start;
+	      gap: 10px;
+	      flex: 0 0 auto;
+	    }
 	    .brand strong {
 	      color: var(--paper);
 	      background: var(--charcoal);
@@ -350,7 +356,18 @@ const indexHTML = `<!doctype html>
 	      white-space: nowrap;
 	      font-size: 12px;
 	    }
+	    .watchlist-toggle {
+	      width: 132px;
+	      min-height: 36px;
+	      padding: 0 12px;
+	      white-space: nowrap;
+	      font-size: 12px;
+	    }
 	    .theme-control {
+	      position: relative;
+	      flex: 0 0 auto;
+	    }
+	    .watchlist-control {
 	      position: relative;
 	      flex: 0 0 auto;
 	    }
@@ -402,6 +419,73 @@ const indexHTML = `<!doctype html>
 	    }
 	    .theme-option.active .theme-option-check {
 	      visibility: visible;
+	    }
+	    .watchlist-panel {
+	      position: absolute;
+	      top: calc(100% + 8px);
+	      right: 0;
+	      z-index: 25;
+	      display: none;
+	      width: 310px;
+	      padding: 14px;
+	      background: var(--paper);
+	      border: 1px solid var(--line-dark);
+	      box-shadow: 0 14px 30px var(--shadow);
+	    }
+	    .watchlist-panel.open {
+	      display: block;
+	    }
+	    .watchlist-title {
+	      margin: 0 0 10px;
+	    }
+	    .watchlist-items {
+	      display: grid;
+	      gap: 8px;
+	    }
+	    .watchlist-row {
+	      display: grid;
+	      grid-template-columns: 1fr 38px;
+	      gap: 8px;
+	      align-items: center;
+	    }
+	    .watchlist-link,
+	    .watchlist-remove {
+	      min-height: 38px;
+	      padding: 0 10px;
+	      font-size: 12px;
+	    }
+	    .watchlist-link {
+	      width: 100%;
+	      background: var(--panel);
+	      color: var(--ink);
+	      border: 1px solid var(--line);
+	      text-align: left;
+	    }
+	    .watchlist-remove {
+	      width: 38px;
+	      padding: 0;
+	      background: transparent;
+	      color: var(--burgundy);
+	      border: 1px solid var(--line);
+	      font-size: 18px;
+	      line-height: 1;
+	    }
+	    .watchlist-link:hover,
+	    .watchlist-link:focus {
+	      background: var(--forest);
+	      border-color: var(--forest);
+	      color: var(--paper);
+	    }
+	    .watchlist-remove:hover,
+	    .watchlist-remove:focus {
+	      background: var(--burgundy);
+	      border-color: var(--burgundy);
+	      color: var(--paper);
+	    }
+	    .watchlist-empty {
+	      margin: 0;
+	      color: var(--muted);
+	      font-size: 13px;
 	    }
 	    .error {
 	      border: 1px solid var(--burgundy);
@@ -780,6 +864,41 @@ const indexHTML = `<!doctype html>
 	      border-color: #1455d9;
 	      color: white;
 	    }
+	    html[data-theme="modern"] .watchlist-panel {
+	      background: white;
+	      border: 1px solid var(--line);
+	      border-radius: 8px;
+	      box-shadow: 0 14px 32px rgba(24, 32, 47, 0.12);
+	    }
+	    html[data-theme="modern"] .watchlist-link,
+	    html[data-theme="modern"] .watchlist-remove {
+	      border-radius: 6px;
+	      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	      letter-spacing: 0;
+	      text-transform: none;
+	    }
+	    html[data-theme="modern"] .watchlist-link {
+	      background: var(--panel);
+	      border: 1px solid var(--line);
+	      color: var(--ink);
+	    }
+	    html[data-theme="modern"] .watchlist-link:hover,
+	    html[data-theme="modern"] .watchlist-link:focus {
+	      background: #1455d9;
+	      border-color: #1455d9;
+	      color: white;
+	    }
+	    html[data-theme="modern"] .watchlist-remove {
+	      background: white;
+	      border: 1px solid var(--line);
+	      color: #b64242;
+	    }
+	    html[data-theme="modern"] .watchlist-remove:hover,
+	    html[data-theme="modern"] .watchlist-remove:focus {
+	      background: #b64242;
+	      border-color: #b64242;
+	      color: white;
+	    }
 	    html[data-theme="modern"] h1 {
 	      color: #008fb3;
 	      font-size: 26px;
@@ -866,6 +985,10 @@ const indexHTML = `<!doctype html>
 	      html[data-theme="modern"] form { flex-direction: column; }
 	      button { width: 100%; }
 	      .theme-toggle { width: 116px; }
+	      .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+	      .watchlist-toggle { width: 132px; }
+	      .watchlist-remove { width: 38px; }
+	      .watchlist-panel { right: 0; width: min(310px, calc(100vw - 40px)); }
 	      .theme-menu { right: 0; width: min(240px, calc(100vw - 40px)); }
 	      .metrics { display: block; overflow-x: auto; }
 	    }
@@ -879,18 +1002,27 @@ const indexHTML = `<!doctype html>
 	          <strong>Stockbridge</strong>
 	          <span>Market Ledger / Fundamental Analysis</span>
 	        </div>
-	        <div class="theme-control">
-	          <button id="theme-toggle" class="theme-toggle" type="button" aria-haspopup="menu" aria-expanded="false">Theme</button>
-	          <div id="theme-menu" class="theme-menu" role="menu" aria-label="Theme options">
-	            <div class="theme-menu-title">Choose theme</div>
-	            <button class="theme-option" type="button" role="menuitemradio" aria-checked="true" data-theme-choice="oldschool">
-	              <span>Old School</span>
-	              <span class="theme-option-check">Selected</span>
-	            </button>
-	            <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="modern">
-	              <span>Original</span>
-	              <span class="theme-option-check">Selected</span>
-	            </button>
+	        <div class="header-actions">
+	          <div class="watchlist-control">
+	            <button id="watchlist-toggle" class="watchlist-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="watchlist-panel">Watchlist</button>
+	            <section id="watchlist-panel" class="watchlist-panel" aria-labelledby="watchlist-title">
+	              <h2 id="watchlist-title" class="watchlist-title">Saved Tickers</h2>
+	              <div id="watchlist-items" class="watchlist-items"></div>
+	            </section>
+	          </div>
+	          <div class="theme-control">
+	            <button id="theme-toggle" class="theme-toggle" type="button" aria-haspopup="menu" aria-expanded="false">Theme</button>
+	            <div id="theme-menu" class="theme-menu" role="menu" aria-label="Theme options">
+	              <div class="theme-menu-title">Choose theme</div>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="true" data-theme-choice="oldschool">
+	                <span>Old School</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	              <button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme-choice="modern">
+	                <span>Original</span>
+	                <span class="theme-option-check">Selected</span>
+	              </button>
+	            </div>
 	          </div>
 	        </div>
 	      </div>
@@ -998,6 +1130,9 @@ const indexHTML = `<!doctype html>
       const menu = document.getElementById("theme-menu");
       const options = Array.from(document.querySelectorAll("[data-theme-choice]"));
       const starButton = document.getElementById("watchlist-star");
+      const watchlistButton = document.getElementById("watchlist-toggle");
+      const watchlistPanel = document.getElementById("watchlist-panel");
+      const watchlistItems = document.getElementById("watchlist-items");
       const watchlistStorageKey = "stockbridge-watchlist";
 
       function getWatchlist() {
@@ -1047,6 +1182,57 @@ const indexHTML = `<!doctype html>
         starButton.setAttribute("aria-label", (saved ? "Remove " : "Add ") + normalizedTicker + (saved ? " from watchlist" : " to watchlist"));
       }
 
+      function removeWatchlistTicker(ticker) {
+        const normalizedTicker = String(ticker || "").trim().toUpperCase();
+        saveWatchlist(getWatchlist().filter(function (savedTicker) { return savedTicker !== normalizedTicker; }));
+      }
+
+      function renderWatchlist() {
+        if (!watchlistItems) return;
+        const list = getWatchlist();
+        watchlistItems.innerHTML = "";
+        if (!list.length) {
+          const empty = document.createElement("p");
+          empty.className = "watchlist-empty";
+          empty.textContent = "No tickers saved yet. Search a stock and click ★ to add it.";
+          watchlistItems.appendChild(empty);
+          return;
+        }
+        list.forEach(function (ticker) {
+          const row = document.createElement("div");
+          row.className = "watchlist-row";
+
+          const tickerButton = document.createElement("button");
+          tickerButton.type = "button";
+          tickerButton.className = "watchlist-link";
+          tickerButton.textContent = ticker;
+          tickerButton.setAttribute("aria-label", "Load " + ticker + " report");
+          tickerButton.addEventListener("click", function () {
+            const input = document.getElementById("ticker-input");
+            if (input) input.value = ticker;
+            window.location.href = "/?ticker=" + encodeURIComponent(ticker);
+          });
+
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "watchlist-remove";
+          removeButton.textContent = "×";
+          removeButton.setAttribute("aria-label", "Remove " + ticker + " from watchlist");
+          removeButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            removeWatchlistTicker(ticker);
+            renderWatchlist();
+            if (starButton && starButton.dataset.ticker === ticker) {
+              updateStarState(ticker);
+            }
+          });
+
+          row.appendChild(tickerButton);
+          row.appendChild(removeButton);
+          watchlistItems.appendChild(row);
+        });
+      }
+
       function setTheme(theme) {
         root.dataset.theme = theme;
         localStorage.setItem("stockbridge-theme", theme);
@@ -1070,10 +1256,18 @@ const indexHTML = `<!doctype html>
         button.setAttribute("aria-expanded", open ? "true" : "false");
       }
 
+      function setWatchlistOpen(open) {
+        if (!watchlistButton || !watchlistPanel) return;
+        if (open) renderWatchlist();
+        watchlistPanel.classList.toggle("open", open);
+        watchlistButton.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
       setTheme(root.dataset.theme || "oldschool");
       if (button && menu) {
         button.addEventListener("click", function () {
           setMenuOpen(!menu.classList.contains("open"));
+          setWatchlistOpen(false);
         });
         options.forEach(function (option) {
           option.addEventListener("click", function () {
@@ -1100,6 +1294,26 @@ const indexHTML = `<!doctype html>
           const ticker = starButton.dataset.ticker;
           toggleWatchlistTicker(ticker);
           updateStarState(ticker);
+          renderWatchlist();
+        });
+      }
+
+      if (watchlistButton && watchlistPanel) {
+        renderWatchlist();
+        watchlistButton.addEventListener("click", function () {
+          setWatchlistOpen(!watchlistPanel.classList.contains("open"));
+          setMenuOpen(false);
+        });
+        document.addEventListener("click", function (event) {
+          if (!watchlistPanel.contains(event.target) && event.target !== watchlistButton) {
+            setWatchlistOpen(false);
+          }
+        });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && watchlistPanel.classList.contains("open")) {
+            setWatchlistOpen(false);
+            watchlistButton.focus();
+          }
         });
       }
     })();
