@@ -1,6 +1,7 @@
 package symbols
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -8,13 +9,15 @@ import (
 
 var tickerPattern = regexp.MustCompile(`^[A-Z][A-Z0-9.-]{0,13}$`)
 
+var ErrInvalidTicker = errors.New("invalid ticker")
+
 func NormalizeTicker(input string) (string, error) {
 	ticker := strings.ToUpper(strings.TrimSpace(input))
 	if ticker == "" {
-		return "", fmt.Errorf("ticker is required")
+		return "", fmt.Errorf("%w: ticker is required", ErrInvalidTicker)
 	}
 	if !tickerPattern.MatchString(ticker) {
-		return "", fmt.Errorf("invalid ticker %q: use 1-14 letters, digits, dots, or dashes", input)
+		return "", fmt.Errorf("%w %q: use 1-14 letters, digits, dots, or dashes", ErrInvalidTicker, input)
 	}
 	return ticker, nil
 }

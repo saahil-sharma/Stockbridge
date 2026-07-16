@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: stockbridge
+    runtime: go
+    plan: free
+    buildCommand: go build -tags netgo -ldflags '-s -w' -o stockbridge-web ./cmd/stockbridge-web
+    startCommand: ./stockbridge-web
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: STOCKBRIDGE_SEC_USER_AGENT
+        sync: false
+      - key: STOCKBRIDGE_FMP_API_KEY
+        sync: false

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -122,6 +123,28 @@ func TestAnalyzeUnknownTickerReturnsUniverseError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Ticker not found in the current Stockbridge symbol universe") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !errors.Is(err, ErrTickerNotFound) {
+		t.Fatalf("expected ErrTickerNotFound, got %v", err)
+	}
+}
+
+func TestAnalyzeProviderFailureIsNotReportedAsUnknownTicker(t *testing.T) {
+	t.Parallel()
+
+	analyzer := NewAnalyzer(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return textResponse(http.StatusTooManyRequests, `{}`), nil
+	})})
+
+	_, err := analyzer.Analyze(context.Background(), "AMZN")
+	if err == nil {
+		t.Fatal("Analyze accepted unavailable provider responses")
+	}
+	if !errors.Is(err, ErrDataUnavailable) {
+		t.Fatalf("expected ErrDataUnavailable, got %v", err)
+	}
+	if strings.Contains(err.Error(), "Ticker not found in the current Stockbridge symbol universe") {
+		t.Fatalf("provider failure was misreported as an unknown ticker: %v", err)
 	}
 }
 

@@ -1,10 +1,13 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -12,11 +15,21 @@ import (
 	"stockbridge/internal/analysis"
 	"stockbridge/internal/app"
 	"stockbridge/internal/data/market"
+	"stockbridge/internal/data/symbols"
 )
 
+const maxConcurrentAnalyses = 6
+
+type Analyzer interface {
+	Analyze(context.Context, string) (analysis.Summary, error)
+	PriceChart(context.Context, string) (market.Bundle, error)
+}
+
 type Server struct {
-	analyzer *app.Analyzer
-	tmpl     *template.Template
+	analyzer      Analyzer
+	tmpl          *template.Template
+	logger        *log.Logger
+	analysisSlots chan struct{}
 }
 
 type pageData struct {
@@ -53,9 +66,11 @@ type chartPoint struct {
 	Close float64 `json:"close"`
 }
 
-func NewServer(analyzer *app.Analyzer) *Server {
+func NewServer(analyzer Analyzer) *Server {
 	return &Server{
-		analyzer: analyzer,
+		analyzer:      analyzer,
+		logger:        log.Default(),
+		analysisSlots: make(chan struct{}, maxConcurrentAnalyses),
 		tmpl: template.Must(template.New("index").Funcs(template.FuncMap{
 			"formatMetric": formatMetric,
 			"chartJSON":    chartJSON,
@@ -65,8 +80,23 @@ func NewServer(analyzer *app.Analyzer) *Server {
 
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", s.handleHealth)
 	mux.HandleFunc("/", s.handleIndex)
-	return mux
+	return securityHeaders(mux)
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodGet {
+		_, _ = w.Write([]byte("ok\n"))
+	}
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -74,37 +104,104 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
 	query := strings.TrimSpace(r.URL.Query().Get("ticker"))
 	data := pageData{
 		Query:     query,
-		Generated: time.Now().Format("January 2, 2006 15:04 MST"),
+		Generated: time.Now().UTC().Format("January 2, 2006 15:04 MST"),
 	}
+	status := http.StatusOK
 	if query != "" {
-		ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
-		defer cancel()
-
-		summary, err := s.analyzer.Analyze(ctx, query)
-		if err != nil {
-			data.Error = err.Error()
+		if !s.acquireAnalysisSlot() {
+			status = http.StatusTooManyRequests
+			w.Header().Set("Retry-After", "5")
+			data.Error = "Stockbridge is handling several searches. Please try again in a few seconds."
 		} else {
-			data.Report = &summary
-			data.Query = summary.Ticker
-			chartCtx, chartCancel := context.WithTimeout(ctx, 4*time.Second)
-			defer chartCancel()
-			if chart, err := s.analyzer.PriceChart(chartCtx, summary.Ticker); err == nil {
-				view := buildChartView(chart)
-				data.Chart = &view
+			defer s.releaseAnalysisSlot()
+			ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+			defer cancel()
+
+			summary, err := s.analyzer.Analyze(ctx, query)
+			if err != nil {
+				s.logger.Printf("ticker analysis failed for %q: %v", query, err)
+				data.Error, status = publicError(err)
 			} else {
-				data.Report.Notes = append(data.Report.Notes, "Price chart unavailable: "+err.Error())
+				data.Report = &summary
+				data.Query = summary.Ticker
+				chartCtx, chartCancel := context.WithTimeout(ctx, 4*time.Second)
+				defer chartCancel()
+				if chart, err := s.analyzer.PriceChart(chartCtx, summary.Ticker); err == nil {
+					view := buildChartView(chart)
+					data.Chart = &view
+				} else {
+					s.logger.Printf("price chart failed for %q: %v", summary.Ticker, err)
+					data.Report.Notes = append(data.Report.Notes, "The price chart is temporarily unavailable or rate-limited.")
+				}
 			}
 		}
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.tmpl.Execute(w, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := s.renderPage(w, status, data); err != nil {
+		s.logger.Printf("render Stockbridge page: %v", err)
+		http.Error(w, "Stockbridge could not render this page.", http.StatusInternalServerError)
 	}
+}
+
+func (s *Server) acquireAnalysisSlot() bool {
+	select {
+	case s.analysisSlots <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Server) releaseAnalysisSlot() {
+	<-s.analysisSlots
+}
+
+func (s *Server) renderPage(w http.ResponseWriter, status int, data pageData) error {
+	var page bytes.Buffer
+	if err := s.tmpl.Execute(&page, data); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	if _, err := page.WriteTo(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func publicError(err error) (string, int) {
+	switch {
+	case errors.Is(err, symbols.ErrInvalidTicker):
+		return "Enter a valid ticker using 1-14 letters, digits, dots, or dashes.", http.StatusBadRequest
+	case errors.Is(err, app.ErrTickerNotFound):
+		return "Ticker not found in the current Stockbridge symbol universe.", http.StatusNotFound
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+		return "The financial data providers took too long to respond. Please try again.", http.StatusGatewayTimeout
+	case errors.Is(err, app.ErrDataUnavailable):
+		return "Current financial data is temporarily unavailable or rate-limited. Please try again shortly.", http.StatusServiceUnavailable
+	default:
+		return "Stockbridge could not complete this request. Please try again.", http.StatusInternalServerError
+	}
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func buildChartView(bundle market.Bundle) chartView {
@@ -1176,13 +1273,13 @@ const indexHTML = `<!doctype html>
 	      <div class="deskline">Ticker lookup desk · archival company file · report generated {{.Generated}}</div>
 	      <form action="/" method="get">
 	        <label class="form-label" for="ticker-input">Ticker lookup</label>
-	        <input id="ticker-input" type="search" name="ticker" value="{{.Query}}" placeholder="ENTER TICKER, E.G. AMZN" autocomplete="off" autofocus>
+	        <input id="ticker-input" type="search" name="ticker" value="{{.Query}}" placeholder="ENTER TICKER, E.G. AMZN" autocomplete="off" maxlength="14" pattern="[A-Za-z][A-Za-z0-9.-]{0,13}" autofocus>
 	        <button type="submit">Analyze</button>
 	      </form>
     </header>
 
     {{if .Error}}
-      <div class="error">{{.Error}}</div>
+	      <div class="error" role="alert">{{.Error}}</div>
     {{end}}
 
     {{if .Report}}

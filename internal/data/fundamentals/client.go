@@ -61,7 +61,7 @@ func (c *Client) Snapshot(ctx context.Context, ticker string) (Snapshot, error) 
 
 	incomeStatements, incomeSource, err := c.incomeStatements(ctx, ticker)
 	if err != nil {
-		snapshot.Notes = append(snapshot.Notes, fmt.Sprintf("income statement data unavailable: %v", err))
+		snapshot.Notes = append(snapshot.Notes, "Income statement data is temporarily unavailable or rate-limited.")
 	} else {
 		snapshot.Sources = append(snapshot.Sources, incomeSource)
 		appendIncomeMetrics(&snapshot, incomeStatements)
@@ -69,7 +69,7 @@ func (c *Client) Snapshot(ctx context.Context, ticker string) (Snapshot, error) 
 
 	balanceSheets, balanceSource, err := c.balanceSheets(ctx, ticker)
 	if err != nil {
-		snapshot.Notes = append(snapshot.Notes, fmt.Sprintf("balance sheet data unavailable: %v", err))
+		snapshot.Notes = append(snapshot.Notes, "Balance sheet data is temporarily unavailable or rate-limited.")
 	} else {
 		snapshot.Sources = append(snapshot.Sources, balanceSource)
 		appendBalanceMetrics(&snapshot, balanceSheets)
@@ -77,7 +77,7 @@ func (c *Client) Snapshot(ctx context.Context, ticker string) (Snapshot, error) 
 
 	cashFlows, cashFlowSource, err := c.cashFlows(ctx, ticker)
 	if err != nil {
-		snapshot.Notes = append(snapshot.Notes, fmt.Sprintf("cash flow data unavailable: %v", err))
+		snapshot.Notes = append(snapshot.Notes, "Cash flow data is temporarily unavailable or rate-limited.")
 	} else {
 		snapshot.Sources = append(snapshot.Sources, cashFlowSource)
 		appendCashFlowMetrics(&snapshot, cashFlows)
@@ -157,16 +157,19 @@ func (c *Client) getJSON(ctx context.Context, path string, out any) error {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("fetch fundamentals from %s: %w", u.String(), err)
+		if ctx.Err() != nil {
+			return fmt.Errorf("fetch fundamentals: %w", ctx.Err())
+		}
+		return fmt.Errorf("fetch fundamentals: request failed")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("fetch fundamentals from %s: unexpected status %s", u.String(), resp.Status)
+		return fmt.Errorf("fetch fundamentals: unexpected status %s", resp.Status)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode fundamentals from %s: %w", u.String(), err)
+		return fmt.Errorf("decode fundamentals: %w", err)
 	}
 	return nil
 }
@@ -177,9 +180,7 @@ func (c *Client) endpointURL(path string) string {
 		return c.baseURL + path
 	}
 	q := u.Query()
-	if c.apiKey != "" {
-		q.Set("apikey", c.apiKey)
-	}
+	q.Del("apikey")
 	u.RawQuery = q.Encode()
 	return u.String()
 }

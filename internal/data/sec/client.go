@@ -3,11 +3,14 @@ package sec
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 )
+
+var ErrCompanyNotFound = errors.New("SEC company not found")
 
 const (
 	companyTickersURL = "https://www.sec.gov/files/company_tickers.json"
@@ -27,13 +30,17 @@ type Company struct {
 	RetrievedAt time.Time
 }
 
-func NewClient(httpClient *http.Client) *Client {
+func NewClient(httpClient *http.Client, configuredUserAgent ...string) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+	userAgent := "Stockbridge/1.0 (SEC contact not configured)"
+	if len(configuredUserAgent) > 0 && strings.TrimSpace(configuredUserAgent[0]) != "" {
+		userAgent = strings.TrimSpace(configuredUserAgent[0])
+	}
 	return &Client{
 		httpClient: httpClient,
-		userAgent:  "Stockbridge CLI contact@example.com",
+		userAgent:  userAgent,
 	}
 }
 
@@ -65,7 +72,7 @@ func (c *Client) LookupCompany(ctx context.Context, ticker string) (Company, err
 		}
 	}
 
-	return Company{}, fmt.Errorf("%s was not found in SEC company_tickers.json", ticker)
+	return Company{}, fmt.Errorf("%w: %s was not found in SEC company_tickers.json", ErrCompanyNotFound, ticker)
 }
 
 func equivalentTickers(left, right string) bool {

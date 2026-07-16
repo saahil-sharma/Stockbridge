@@ -3,8 +3,11 @@ GO_MOD_CACHE := $(CURDIR)/.gomodcache
 GO_TMP := $(CURDIR)/.gotmp
 GO_ENV := GOMODCACHE=$(GO_MOD_CACHE) GOCACHE=$(GO_CACHE) GOTMPDIR=$(GO_TMP)
 GO_FLAGS := -ldflags=-linkmode=external
+BIN_DIR := $(CURDIR)/bin
+CLI_BINARY := $(BIN_DIR)/stockbridge
+WEB_BINARY := $(BIN_DIR)/stockbridge-web
 
-.PHONY: help analyze web build test clean
+.PHONY: help analyze web build build-web test clean
 
 help:
 	@mkdir -p "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)"
@@ -20,12 +23,16 @@ web:
 	$(GO_ENV) go run $(GO_FLAGS) ./cmd/stockbridge-web
 
 build:
-	@mkdir -p "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)"
-	$(GO_ENV) go build $(GO_FLAGS) ./cmd/stockbridge
+	@mkdir -p "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)" "$(BIN_DIR)"
+	$(GO_ENV) go build $(GO_FLAGS) -o "$(CLI_BINARY)" ./cmd/stockbridge
+
+build-web:
+	@mkdir -p "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)" "$(BIN_DIR)"
+	$(GO_ENV) go build -tags netgo -ldflags='-s -w' -o "$(WEB_BINARY)" ./cmd/stockbridge-web
 
 test:
 	@mkdir -p "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)"
 	$(GO_ENV) go test $(GO_FLAGS) ./...
 
 clean:
-	rm -rf "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)" stockbridge
+	rm -rf "$(GO_MOD_CACHE)" "$(GO_CACHE)" "$(GO_TMP)" "$(BIN_DIR)"

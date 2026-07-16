@@ -3,11 +3,17 @@ package symbols
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+)
+
+var (
+	ErrTickerNotFound      = errors.New("ticker not found")
+	ErrProviderUnavailable = errors.New("symbol provider unavailable")
 )
 
 const (
@@ -72,9 +78,9 @@ func (c *Client) Lookup(ctx context.Context, ticker string) (Listing, error) {
 	}
 
 	if len(lookupErrs) > 0 {
-		return Listing{}, fmt.Errorf("%s was not found in the local fallback symbol universe after live symbol directory lookup failed: %v", ticker, lookupErrs[0])
+		return Listing{}, fmt.Errorf("%w: %s was not found in the local fallback symbol universe after live symbol directory lookup failed: %v", ErrProviderUnavailable, ticker, lookupErrs[0])
 	}
-	return Listing{}, fmt.Errorf("Ticker not found in the current Stockbridge symbol universe.")
+	return Listing{}, fmt.Errorf("%w: Ticker not found in the current Stockbridge symbol universe.", ErrTickerNotFound)
 }
 
 func (c *Client) lookupNasdaqListed(ctx context.Context, ticker string) (Listing, bool, error) {
